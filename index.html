@@ -207,6 +207,23 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 .vote-card.selected .vc-letter { background: var(--blue); color: #fff; }
 .vc-text { font-size: 0.92rem; line-height: 1.4; font-weight: 500; }
 
+/* ===== INTRO OVERLAY ===== */
+#intro-overlay { position: fixed; inset: 0; z-index: 200; display: none; align-items: center; justify-content: center; flex-direction: column; }
+#intro-overlay.phase-count { background: rgba(7,7,26,0.78); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); transition: background 0.8s ease; }
+#intro-overlay.phase-players { background: #07071a; transition: background 0.8s ease; }
+.intro-count-wrap { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+.intro-count-label { font-size: 0.75rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--blue-bright); opacity: 0.75; }
+#intro-number { font-family: var(--font-d); font-weight: 900; font-size: clamp(9rem, 28vw, 15rem); color: var(--blue-bright); line-height: 1; text-shadow: 0 0 100px var(--blue-glow), 0 0 40px var(--blue-glow); }
+@keyframes balloonCount { 0%{transform:scale(0.15);opacity:0} 65%{transform:scale(1.18)} 100%{transform:scale(1);opacity:1} }
+.intro-players-wrap { width: 100%; max-width: 960px; padding: 2.5rem 2rem; }
+.intro-players-title { font-family: var(--font-d); font-size: 0.85rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); text-align: center; margin-bottom: 2rem; }
+.intro-players-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1.2rem; }
+.intro-player-card { background: var(--surface); border: 1.5px solid var(--border-bright); border-radius: 18px; padding: 1.4rem 1rem; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; animation: popIn 0.5s cubic-bezier(.17,.67,.3,1.3) both; aspect-ratio: 1; }
+.intro-p-name { font-family: var(--font-d); font-weight: 700; font-size: 0.82rem; color: var(--text); }
+.intro-p-avatar { width: 76px; height: 76px; border-radius: 50%; overflow: hidden; border: 3px solid var(--blue); display: flex; align-items: center; justify-content: center; font-family: var(--font-d); font-weight: 900; font-size: 1.7rem; flex-shrink: 0; }
+.intro-p-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.intro-p-detail { font-size: 0.68rem; color: var(--muted); font-style: italic; line-height: 1.4; }
+
 /* ===== PLAYER DONE ===== */
 #player-done { align-items: center; justify-content: center; padding: 2rem; text-align: center; }
 .done-ring { width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--blue); display: flex; align-items: center; justify-content: center; font-size: 2.8rem; margin: 0 auto 1.5rem; box-shadow: 0 0 40px var(--blue-glow); animation: ringPop 0.5s cubic-bezier(.17,.67,.3,1.3); }
@@ -434,6 +451,18 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
   <div class="done-sub" id="done-sub">Wacht tot de host de scores toont op de TV.</div>
 </div>
 
+<!-- INTRO OVERLAY -->
+<div id="intro-overlay">
+  <div class="intro-count-wrap" id="intro-count-section">
+    <div class="intro-count-label">Het spel begint over…</div>
+    <div id="intro-number">5</div>
+  </div>
+  <div class="intro-players-wrap" id="intro-players-section" style="display:none">
+    <div class="intro-players-title">De spelers van vanavond</div>
+    <div class="intro-players-grid" id="intro-players-grid"></div>
+  </div>
+</div>
+
 <script>
 // ⚠️ STAP 1: Vervang onderstaande config met die van jouw Firebase project
 // Ga naar console.firebase.google.com → jouw project → Project settings → jouw web app
@@ -614,7 +643,45 @@ function startGame() {
     answerTime: state.answerTime, questions: state.questions,
     currentQuestion: state.questions[0], answers: null, votes: null, voteAnswers: null, isLastRound: false,
   });
-  startRound();
+  showIntro();
+}
+
+function showIntro() {
+  const overlay = document.getElementById('intro-overlay');
+  const countSection = document.getElementById('intro-count-section');
+  const playersSection = document.getElementById('intro-players-section');
+  const numEl = document.getElementById('intro-number');
+
+  overlay.style.display = 'flex';
+  overlay.className = 'phase-count';
+  countSection.style.display = 'flex';
+  playersSection.style.display = 'none';
+
+  let count = 5;
+  function tick() {
+    numEl.textContent = count;
+    numEl.style.animation = 'none';
+    void numEl.offsetWidth;
+    numEl.style.animation = 'balloonCount 0.55s cubic-bezier(.17,.67,.3,1.4)';
+    if (count > 1) { count--; setTimeout(tick, 950); }
+    else {
+      setTimeout(() => {
+        countSection.style.display = 'none';
+        overlay.className = 'phase-players';
+        document.getElementById('intro-players-grid').innerHTML = state.players.map((p, i) => `
+          <div class="intro-player-card" style="animation-delay:${i*0.1}s;border-color:${p.color}55">
+            <div class="intro-p-name">${esc(p.name)}</div>
+            <div class="intro-p-avatar" style="border-color:${p.color};box-shadow:0 0 22px ${p.color}44">
+              ${p.photo ? `<img src="${p.photo}" alt="${esc(p.name)}">` : `<span style="color:${p.color}">${p.name[0].toUpperCase()}</span>`}
+            </div>
+            ${p.detail ? `<div class="intro-p-detail">"${esc(p.detail)}"</div>` : ''}
+          </div>`).join('');
+        playersSection.style.display = 'block';
+        setTimeout(() => { overlay.style.display = 'none'; overlay.className = ''; startRound(); }, 5000);
+      }, 600);
+    }
+  }
+  tick();
 }
 
 function startRound() {
