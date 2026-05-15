@@ -524,6 +524,11 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
   <div class="done-sub" id="done-sub">Wacht tot de host de scores toont op de TV.</div>
 </div>
 
+<!-- SPECTATOR (TV-scherm) -->
+<div class="screen" id="spectator">
+  <div id="spectator-content" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:3rem;text-align:center;width:100%"></div>
+</div>
+
 <!-- INTRO OVERLAY -->
 <div id="intro-overlay">
   <div class="intro-count-wrap" id="intro-count-section">
@@ -575,7 +580,7 @@ function roomRoot() { return db.ref(`rooms/${state.roomCode}`); }
 function addListener(ref, event, fn) { ref.on(event, fn); activeListeners.push({ ref, event, fn }); }
 function clearListeners() { activeListeners.forEach(({ ref, event, fn }) => ref.off(event, fn)); activeListeners = []; }
 
-const SCHERMEN_MET_BG = new Set(['landing','game-select','join','player-waiting','player-answer','player-vote','player-done','host-lobby','host-game']);
+const SCHERMEN_MET_BG = new Set(['landing','game-select','join','player-waiting','player-answer','player-vote','player-done','host-lobby','host-game','spectator']);
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -1124,12 +1129,71 @@ function toggleMusic() {
   else { music.pause(); document.getElementById('music-btn').textContent = '🔇'; }
 }
 
-// Cast naar TV via Presentation API (werkt in Chrome met Chromecast)
-const castRequest = 'PresentationRequest' in window ? new PresentationRequest([window.location.href]) : null;
+// Cast naar TV via Presentation API
 function startCast() {
-  if (castRequest) castRequest.start().catch(() => {});
-  else alert('Casten wordt niet ondersteund in deze browser. Gebruik Chrome.');
+  if (!('PresentationRequest' in window)) { alert('Casten wordt niet ondersteund in deze browser. Gebruik Chrome.'); return; }
+  const base = window.location.href.split('?')[0];
+  const url = state.roomCode ? base + '?spectate=' + state.roomCode : base;
+  new PresentationRequest([url]).start().catch(() => {});
 }
+
+// Spectator-modus: TV-scherm volgt het spel via Firebase
+function initSpectator() {
+  const params = new URLSearchParams(window.location.search);
+  const roomCode = params.get('spectate');
+  if (!roomCode) return;
+  show('spectator');
+  db.ref('rooms/' + roomCode).on('value', snap => {
+    const data = snap.val();
+    const el = document.getElementById('spectator-content');
+    if (!data) { el.innerHTML = '<div style="font-family:var(--font-d);font-size:2rem;color:var(--muted)">Spel beëindigd</div>'; return; }
+    renderSpectator(data, roomCode, el);
+  });
+}
+
+function renderSpectator(data, roomCode, el) {
+  const { phase, currentQuestion, scores, players, totalRounds, currentRound } = data;
+  if (phase === 'lobby') {
+    const playerCards = (players || []).map(p =>
+      `<div style="background:var(--surface);border:1px solid var(--border-bright);border-radius:12px;padding:0.8rem 1.6rem;font-weight:600;font-size:1.2rem">${esc(p.name)}</div>`
+    ).join('');
+    el.innerHTML = `
+      <div style="font-family:var(--font-d);font-size:3.5rem;margin-bottom:2rem"><span style="color:var(--red)">HUIZE</span><span style="color:var(--blue-bright)">JULES</span></div>
+      <div style="font-family:var(--font-d);color:var(--muted);font-size:1rem;letter-spacing:0.15em;margin-bottom:0.6rem">ROOM CODE</div>
+      <div style="font-family:var(--font-d);font-size:7rem;letter-spacing:0.25em;line-height:1;color:var(--text)">${roomCode}</div>
+      <div style="color:var(--muted);margin-top:0.8rem;margin-bottom:2.5rem;font-size:1.1rem">Ga naar huizejules.nl en voer deze code in</div>
+      <div style="display:flex;flex-wrap:wrap;gap:0.8rem;justify-content:center">${playerCards}</div>`;
+  } else if (phase === 'answering') {
+    const q = typeof currentQuestion === 'string' ? currentQuestion : (currentQuestion?.tekst || '');
+    el.innerHTML = `
+      <div style="font-family:var(--font-d);color:var(--muted);font-size:1rem;letter-spacing:0.12em;margin-bottom:2rem">RONDE ${(currentRound || 0) + 1} / ${totalRounds || 10}</div>
+      <div style="font-family:var(--font-d);font-size:3rem;line-height:1.35;max-width:900px">${esc(q)}</div>
+      <div style="color:var(--muted);font-size:1.1rem;margin-top:2.5rem">Vul je antwoord in op je telefoon</div>`;
+  } else if (phase === 'voting') {
+    el.innerHTML = `
+      <div style="font-family:var(--font-d);font-size:3rem;color:var(--blue-bright);margin-bottom:1.5rem">STEM!</div>
+      <div style="color:var(--muted);font-size:1.3rem">Kies het beste antwoord op je telefoon</div>`;
+  } else if (phase === 'wie-results') {
+    el.innerHTML = `
+      <div style="font-family:var(--font-d);font-size:3rem;color:var(--red);margin-bottom:1.5rem">WIE O WIE</div>
+      <div style="color:var(--muted);font-size:1.3rem">De resultaten worden bekendgemaakt...</div>`;
+  } else if (phase === 'scores') {
+    const sorted = Object.entries(scores || {}).sort((a, b) => b[1] - a[1]);
+    const rankColors = ['#FFD700','#C0C0C0','#CD7F32'];
+    el.innerHTML = `
+      <div style="font-family:var(--font-d);font-size:2.8rem;margin-bottom:2rem"><span style="color:var(--red)">SCORE</span><span style="color:var(--blue-bright)">BORD</span></div>
+      <div style="display:flex;flex-direction:column;gap:0.8rem;width:100%;max-width:600px">
+        ${sorted.map(([name, pts], i) => `
+          <div style="display:flex;align-items:center;gap:1.2rem;background:var(--surface);border:1px solid var(--border-bright);border-radius:14px;padding:1.1rem 1.6rem">
+            <div style="font-family:var(--font-d);font-size:1.8rem;width:2.2rem;color:${rankColors[i] || 'var(--muted)'}">${i + 1}</div>
+            <div style="flex:1;font-weight:600;font-size:1.3rem">${esc(name)}</div>
+            <div style="font-family:var(--font-d);font-size:1.4rem;color:var(--blue-bright)">${pts}</div>
+          </div>`).join('')}
+      </div>`;
+  }
+}
+
+initSpectator();
 
 function rndCode() { return Math.random().toString(36).substring(2,6).toUpperCase(); }
 function shuffle(a) { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]} return a; }
