@@ -718,7 +718,11 @@ function nextRound() {
   } else { endGame(); }
 }
 
-function endGame() { clearListeners(); roomRoot().update({ phase: 'done' }); state.mode = null; show('landing'); }
+function endGame() { clearListeners(); roomRoot().remove(); state.mode = null; show('landing'); }
+
+window.addEventListener('beforeunload', () => {
+  if (state.mode === 'host' && state.roomCode) roomRoot().remove();
+});
 
 // ===== SPELER ANTWOORD =====
 function showPlayerAnswer(question, answerTime) {
