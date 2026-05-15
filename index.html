@@ -423,8 +423,10 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
       <div class="pa-qtext" id="p-question-text">—</div>
     </div>
     <div class="pa-input-card">
-      <div class="field-label">Jouw grappigste antwoord</div>
-      <textarea class="field" id="player-answer-text" placeholder="Type hier iets hilarisch…"></textarea>
+      <div id="player-answer-container">
+        <div class="field-label">Jouw grappigste antwoord</div>
+        <textarea class="field" id="player-answer-text" placeholder="Type hier iets hilarisch…"></textarea>
+      </div>
       <div class="pa-footer">
         <div class="pa-timer" id="p-timer">
           <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -716,7 +718,7 @@ function startRound() {
   clearListeners();
   const q = state.questions[state.currentRound];
   document.getElementById('round-label').textContent = `Ronde ${state.currentRound+1} van ${state.totalRounds}`;
-  document.getElementById('host-question-text').textContent = q;
+  document.getElementById('host-question-text').textContent = getQuestionText(q);
   document.getElementById('answers-received').textContent = '0';
   document.getElementById('answers-total').textContent = state.players.length;
   document.getElementById('host-waiting').style.display = 'flex';
@@ -746,11 +748,14 @@ function showVotePhase() {
   document.getElementById('host-waiting').style.display = 'none';
   document.getElementById('host-vote-section').style.display = 'block';
   const entries = Object.entries(state.answers);
-  document.getElementById('host-answers-grid').innerHTML = entries.map(([name, answer], i) => `
-    <div class="answer-card" data-akey="${esc(answer.slice(0,30))}">
+  const currentQ = state.questions[state.currentRound];
+  document.getElementById('host-answers-grid').innerHTML = entries.map(([name, answer], i) => {
+    const display = formatAnswer(currentQ, answer);
+    return `<div class="answer-card" data-akey="${esc(answer.slice(0,30))}">
       <div class="answer-ltr">Antwoord ${String.fromCharCode(65+i)}</div>
-      <div class="answer-txt">"${esc(answer)}"</div>
-    </div>`).join('');
+      <div class="answer-txt">"${esc(display)}"</div>
+    </div>`;
+  }).join('');
   const voteAnswers = entries.map(([n, a]) => ({ name: n, answer: a }));
   roomRoot().update({ phase: 'voting', voteAnswers, currentQuestion: state.questions[state.currentRound], votes: null });
 
@@ -819,8 +824,21 @@ window.addEventListener('beforeunload', () => {
 
 // ===== SPELER ANTWOORD =====
 function showPlayerAnswer(question, answerTime) {
-  document.getElementById('p-question-text').textContent = question;
-  document.getElementById('player-answer-text').value = '';
+  document.getElementById('p-question-text').textContent = getQuestionText(question);
+  const container = document.getElementById('player-answer-container');
+  if (isInvulVraag(question)) {
+    const blanks = (getQuestionText(question).match(/___/g) || []).length;
+    const parts = getQuestionText(question).split('___');
+    container.innerHTML = Array.from({length: blanks}, (_, i) => `
+      <div style="margin-bottom:0.75rem">
+        <div class="field-label">${esc(parts[i].trim().split(' ').slice(-3).join(' '))} ___</div>
+        <input class="field invul-input" placeholder="Vul in…" maxlength="60">
+      </div>`).join('');
+  } else {
+    container.innerHTML = `
+      <div class="field-label">Jouw grappigste antwoord</div>
+      <textarea class="field" id="player-answer-text" placeholder="Type hier iets hilarisch…"></textarea>`;
+  }
   show('player-answer');
   startTimer(answerTime || 60);
 }
@@ -840,12 +858,26 @@ function startTimer(secs) {
   }, 1000);
 }
 
-function autoSubmit() { if (!state.myAnswered) { if (!document.getElementById('player-answer-text').value.trim()) document.getElementById('player-answer-text').value = '(geen antwoord)'; submitAnswer(); } }
+function autoSubmit() {
+  if (!state.myAnswered) {
+    const invulInputs = document.querySelectorAll('.invul-input');
+    if (invulInputs.length > 0) {
+      invulInputs.forEach(el => { if (!el.value.trim()) el.value = '???'; });
+    } else {
+      if (!document.getElementById('player-answer-text')?.value.trim())
+        document.getElementById('player-answer-text').value = '(geen antwoord)';
+    }
+    submitAnswer();
+  }
+}
 
 function submitAnswer() {
   if (state.myAnswered) return;
   clearInterval(timerInterval); state.myAnswered = true;
-  const answer = document.getElementById('player-answer-text').value.trim() || '(geen antwoord)';
+  const invulInputs = document.querySelectorAll('.invul-input');
+  const answer = invulInputs.length > 0
+    ? Array.from(invulInputs).map(el => el.value.trim() || '???').join('|||')
+    : (document.getElementById('player-answer-text')?.value.trim() || '(geen antwoord)');
   db.ref(`rooms/${state.roomCode}/answers/${state.myName}`).set(answer);
   show('player-done');
   document.getElementById('done-sub').textContent = 'Wacht op de andere spelers…';
@@ -863,11 +895,13 @@ function showPlayerVote(question, answers) {
     document.getElementById('done-sub').textContent = 'Wacht op de andere spelers…';
     return;
   }
-  document.getElementById('vote-options').innerHTML = opts.map((a, i) => `
-    <div class="vote-card" onclick="selectVote(${i},'${esc(a.answer).replace(/'/g,"&#39;")}')">
+  document.getElementById('vote-options').innerHTML = opts.map((a, i) => {
+    const display = formatAnswer(question, a.answer);
+    return `<div class="vote-card" onclick="selectVote(${i},'${esc(a.answer).replace(/'/g,"&#39;")}')">
       <div class="vc-letter">${String.fromCharCode(65+i)}</div>
-      <div class="vc-text">"${esc(a.answer)}"</div>
-    </div>`).join('');
+      <div class="vc-text">"${esc(display)}"</div>
+    </div>`;
+  }).join('');
   document.getElementById('vote-submit-btn').disabled = true;
   show('player-vote');
 }
@@ -883,6 +917,16 @@ function submitVote() {
   db.ref(`rooms/${state.roomCode}/votes/${state.myName}`).set(state.myVote);
   show('player-done');
   document.getElementById('done-sub').textContent = 'Stem uitgebracht! Wacht op de scores op de TV…';
+}
+
+function getQuestionText(q) { return (typeof q === 'object' && q) ? q.tekst : q; }
+function isInvulVraag(q) { return typeof q === 'object' && q && q.type === 'invul'; }
+function formatAnswer(question, answer) {
+  if (!isInvulVraag(question) || !answer.includes('|||')) return answer;
+  const parts = answer.split('|||');
+  let tekst = getQuestionText(question);
+  parts.forEach(p => { tekst = tekst.replace('___', `[${p}]`); });
+  return tekst;
 }
 
 function rndCode() { return Math.random().toString(36).substring(2,6).toUpperCase(); }

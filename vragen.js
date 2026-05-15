@@ -1,5 +1,10 @@
 // Hier kun je zelf vragen toevoegen, aanpassen of verwijderen.
 // Elke vraag staat tussen aanhalingstekens en wordt afgesloten met een komma.
+//
+// Voor invulvragen met meerdere vakjes gebruik je dit formaat:
+//   { tekst: "Zin met ___ en nog een ___", type: "invul" }
+// Elk ___ wordt een apart invulvakje voor de speler.
+//
 // Minimaal evenveel vragen als het aantal rondes dat je instelt!
 
 const QUESTIONS = [
@@ -18,4 +23,5 @@ const QUESTIONS = [
   "Als je een museum mocht openen over jouw leven, wat zou de eerste zaal heten?",
   "Bedenk een slogan voor de dag van morgen.",
   "Wat zou de slechtste bijbaan zijn voor een spook?",
+  { tekst: "Mijn fiets is gestolen door een ___ op een ___", type: "invul" },
 ];
