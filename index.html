@@ -296,7 +296,7 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 <div class="bg-orb bg-orb-red"></div>
 <div class="bg-orb bg-orb-blue"></div>
 <button id="music-btn" onclick="toggleMusic()" style="position:fixed;top:1rem;right:1rem;z-index:999;background:var(--surface2);border:1px solid var(--border-bright);border-radius:99px;padding:0.45rem 0.85rem;font-size:1.1rem;cursor:pointer;transition:all 0.2s" title="Muziek aan/uit">🔊</button>
-<button id="cast-btn" onclick="startCast()" style="position:fixed;top:1rem;right:5rem;z-index:999;display:none;background:var(--surface2);border:1px solid var(--border-bright);border-radius:99px;padding:0.45rem 0.85rem;font-size:1.1rem;cursor:pointer;transition:all 0.2s" title="Cast naar TV">📺</button>
+<button id="cast-btn" onclick="startCast()" style="position:fixed;top:1rem;right:5rem;z-index:999;background:var(--surface2);border:1px solid var(--border-bright);border-radius:99px;padding:0.45rem 0.85rem;font-size:1.1rem;cursor:pointer;transition:all 0.2s" title="Cast naar TV">📺</button>
 
 <!-- LANDING -->
 <div class="screen active" id="landing">
@@ -342,10 +342,6 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 <div class="screen" id="host-lobby">
   <div class="hl-top">
     <div class="hl-logo"><span class="r">HUIZE</span><span class="b">JULES</span></div>
-    <div class="cast-badge">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8"/><path d="M2 17a5 5 0 0 1 5 5"/><path d="M2 12a10 10 0 0 1 10 10"/></svg>
-      Cast dit scherm naar je TV
-    </div>
     <div class="room-badge">
       <div class="room-badge-label">Room code</div>
       <div class="room-badge-code" id="room-code-display">····</div>
@@ -403,10 +399,6 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
     <div class="hg-inner">
       <div class="hg-top">
         <span id="round-label">Ronde 1</span>
-        <div class="cast-badge" style="margin-left:auto">
-          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8"/><path d="M2 17a5 5 0 0 1 5 5"/><path d="M2 12a10 10 0 0 1 10 10"/></svg>
-          Gecast naar TV
-        </div>
       </div>
       <div class="hg-question">
         <div class="hg-q-text" id="host-question-text">—</div>
@@ -1133,16 +1125,10 @@ function toggleMusic() {
 }
 
 // Cast naar TV via Presentation API (werkt in Chrome met Chromecast)
-let castRequest = null;
-if ('PresentationRequest' in window) {
-  castRequest = new PresentationRequest([window.location.href]);
-  castRequest.getAvailability().then(av => {
-    document.getElementById('cast-btn').style.display = av.value ? '' : 'none';
-    av.onchange = () => { document.getElementById('cast-btn').style.display = av.value ? '' : 'none'; };
-  }).catch(() => {});
-}
+const castRequest = 'PresentationRequest' in window ? new PresentationRequest([window.location.href]) : null;
 function startCast() {
   if (castRequest) castRequest.start().catch(() => {});
+  else alert('Casten wordt niet ondersteund in deze browser. Gebruik Chrome.');
 }
 
 function rndCode() { return Math.random().toString(36).substring(2,6).toUpperCase(); }
