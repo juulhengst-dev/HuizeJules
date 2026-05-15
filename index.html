@@ -563,6 +563,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+document.addEventListener('DOMContentLoaded', () => show('landing'));
+
 const PALETTE = ['#e8193c','#1560f5','#9c27b0','#ff6d00','#00897b','#c62828','#283593','#558b2f','#f57f17','#00838f'];
 // Vragen worden geladen vanuit vragen.js
 
@@ -912,39 +914,55 @@ function showScores() {
     return `<div style="${s};border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-weight:900;flex-shrink:0">${inner}</div>`;
   }
 
-  // Build podium (order on screen: 2nd left, 1st centre, 3rd right)
-  const podiumOrder = [sorted[1], sorted[0], sorted[2]];
-  const podiumClass = ['p2','p1','p3'];
-  const podiumNum = ['2','1','3'];
-  const podiumColors = ['#c0c0c0','#FFD700','#cd7f32'];
-
-  const podiumHTML = `<div class="podium-scene">` +
-    podiumOrder.map((entry, idx) => {
-      if (!entry) return `<div class="podium-col" style="width:115px"></div>`;
-      const [name, pts] = entry;
-      const isFirst = podiumNum[idx] === '1';
-      return `<div class="podium-col">
-        ${isFirst ? `<div style="font-family:var(--font-d);font-size:1.1rem;margin-bottom:0.2rem">👑</div>` : ''}
-        ${makeAv(name, 'lg')}
-        <div class="podium-pname" style="color:${podiumColors[idx]};margin-top:0.4rem">${esc(name)}</div>
-        <div class="podium-top-pts">${pts} pts</div>
-        <div class="podium-block ${podiumClass[idx]}"><div class="podium-num">${podiumNum[idx]}</div></div>
+  if (isLast) {
+    // Final round: Kahoot-style podium (2nd left, 1st centre, 3rd right)
+    const podiumOrder = [sorted[1], sorted[0], sorted[2]];
+    const podiumClass = ['p2','p1','p3'];
+    const podiumNum = ['2','1','3'];
+    const podiumColors = ['#c0c0c0','#FFD700','#cd7f32'];
+    const podiumHTML = `<div class="podium-scene">` +
+      podiumOrder.map((entry, idx) => {
+        if (!entry) return `<div class="podium-col" style="width:115px"></div>`;
+        const [name, pts] = entry;
+        const isFirst = podiumNum[idx] === '1';
+        return `<div class="podium-col">
+          ${isFirst ? `<div style="font-family:var(--font-d);font-size:1.1rem;margin-bottom:0.2rem">👑</div>` : ''}
+          ${makeAv(name, 'lg')}
+          <div class="podium-pname" style="color:${podiumColors[idx]};margin-top:0.4rem">${esc(name)}</div>
+          <div class="podium-top-pts">${pts} pts</div>
+          <div class="podium-block ${podiumClass[idx]}"><div class="podium-num">${podiumNum[idx]}</div></div>
+        </div>`;
+      }).join('') +
+    `</div>`;
+    document.getElementById('podium-wrap').innerHTML = podiumHTML;
+    const rest = sorted.slice(3);
+    document.getElementById('score-list').innerHTML = rest.map(([name, pts], i) => {
+      return `<div class="podium-rest-row">
+        <div class="pr-rank">${i + 4}</div>
+        ${makeAv(name, 'sm')}
+        <div class="pr-name">${esc(name)}</div>
+        <div class="pr-pts">${pts}</div>
       </div>`;
-    }).join('') +
-  `</div>`;
-
-  document.getElementById('podium-wrap').innerHTML = podiumHTML;
-
-  // Remaining players (4th place onward)
-  const rest = sorted.slice(3);
-  document.getElementById('score-list').innerHTML = rest.map(([name, pts], i) => {
-    return `<div class="podium-rest-row">
-      <div class="pr-rank">${i + 4}</div>
-      ${makeAv(name, 'sm')}
-      <div class="pr-name">${esc(name)}</div>
-      <div class="pr-pts">${pts}</div>
-    </div>`;
-  }).join('');
+    }).join('');
+  } else {
+    // Intermediate round: score bars
+    document.getElementById('podium-wrap').innerHTML = '';
+    const max = sorted[0]?.[1] || 1;
+    const bars = ['linear-gradient(90deg,#FFD700,#ffaa00)','linear-gradient(90deg,#C0C0C0,#aaa)','linear-gradient(90deg,#CD7F32,#a05a20)','linear-gradient(90deg,var(--blue),var(--blue-bright))'];
+    const ranks = ['g1','g2','g3'];
+    document.getElementById('score-list').innerHTML = sorted.map(([name, pts], i) => {
+      const p = state.players.find(pl => pl.name === name);
+      const av = p?.photo ? `<img src="${p.photo}" alt="${esc(name)}">` : `<span style="color:${p?.color||'#fff'}">${name[0]}</span>`;
+      return `<div class="score-row" style="animation-delay:${i*0.12}s">
+        <div class="sr-rank ${ranks[i]||''}">${i+1}</div>
+        <div class="sr-avatar" style="border-color:${p?.color||'var(--border-bright)'}">${av}</div>
+        <div class="sr-info"><div class="sr-name">${esc(name)}</div>
+          <div class="sr-bar-wrap"><div class="sr-bar" style="width:${Math.max(8,(pts/max)*100)}%;background:${bars[Math.min(i,3)]}"></div></div>
+        </div>
+        <div class="sr-pts">${pts}</div>
+      </div>`;
+    }).join('');
+  }
 
   document.getElementById('next-round-btn').style.display = isLast ? 'none' : '';
   show('host-scores');
