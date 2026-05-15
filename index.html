@@ -1152,9 +1152,10 @@ function initSpectator() {
 }
 
 function renderSpectator(data, roomCode, el) {
-  const { phase, currentQuestion, scores, players, totalRounds, currentRound } = data;
+  const { phase, currentQuestion, scores, totalRounds, currentRound } = data;
+  const players = data.players ? (Array.isArray(data.players) ? data.players : Object.values(data.players)) : [];
   if (phase === 'lobby') {
-    const playerCards = (players || []).map(p =>
+    const playerCards = players.map(p =>
       `<div style="background:var(--surface);border:1px solid var(--border-bright);border-radius:12px;padding:0.8rem 1.6rem;font-weight:600;font-size:1.2rem">${esc(p.name)}</div>`
     ).join('');
     el.innerHTML = `
