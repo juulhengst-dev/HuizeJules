@@ -291,7 +291,7 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 <body>
 <audio id="bg-music" src="Moavii - Thats Right (freetouse.com).mp3" loop preload="auto"></audio>
 
-<div id="site-bg"></div>
+<div id="site-bg" class="zichtbaar"></div>
 <div class="bg-grid"></div>
 <div class="bg-orb bg-orb-red"></div>
 <div class="bg-orb bg-orb-blue"></div>
@@ -562,8 +562,6 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
-
-document.addEventListener('DOMContentLoaded', () => show('landing'));
 
 const PALETTE = ['#e8193c','#1560f5','#9c27b0','#ff6d00','#00897b','#c62828','#283593','#558b2f','#f57f17','#00838f'];
 // Vragen worden geladen vanuit vragen.js
