@@ -261,9 +261,12 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 </style>
 </head>
 <body>
+<audio id="bg-music" src="Moavii - Thats Right (freetouse.com).mp3" loop preload="auto"></audio>
+
 <div class="bg-grid"></div>
 <div class="bg-orb bg-orb-red"></div>
 <div class="bg-orb bg-orb-blue"></div>
+<button id="music-btn" onclick="toggleMusic()" style="position:fixed;top:1rem;right:1rem;z-index:999;background:var(--surface2);border:1px solid var(--border-bright);border-radius:99px;padding:0.45rem 0.85rem;font-size:1.1rem;cursor:pointer;transition:all 0.2s" title="Muziek aan/uit">🔊</button>
 
 <!-- LANDING -->
 <div class="screen active" id="landing">
@@ -1036,6 +1039,20 @@ function formatAnswer(question, answer) {
   let tekst = getQuestionText(question);
   parts.forEach(p => { tekst = tekst.replace('___', `[${p}]`); });
   return tekst;
+}
+
+// ===== MUZIEK =====
+const music = document.getElementById('bg-music');
+music.volume = 0.35;
+let musicStarted = false;
+function startMusic() {
+  if (!musicStarted) { musicStarted = true; music.play().catch(()=>{}); }
+}
+document.addEventListener('click', startMusic, { once: true });
+
+function toggleMusic() {
+  if (music.paused) { music.play(); document.getElementById('music-btn').textContent = '🔊'; }
+  else { music.pause(); document.getElementById('music-btn').textContent = '🔇'; }
 }
 
 function rndCode() { return Math.random().toString(36).substring(2,6).toUpperCase(); }
