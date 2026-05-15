@@ -1,1 +1,717 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>HuizeJules</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #07071a;
+  --surface: #0f0f2e;
+  --surface2: #181840;
+  --surface3: #1e1e50;
+  --red: #e8193c;
+  --red-glow: rgba(232,25,60,0.35);
+  --blue: #1560f5;
+  --blue-bright: #3d7fff;
+  --blue-glow: rgba(21,96,245,0.35);
+  --red-dim: rgba(232,25,60,0.15);
+  --blue-dim: rgba(21,96,245,0.15);
+  --text: #f2f2ff;
+  --muted: #7070a8;
+  --border: rgba(255,255,255,0.08);
+  --border-bright: rgba(255,255,255,0.14);
+  --font-d: 'Unbounded', sans-serif;
+  --font-b: 'Plus Jakarta Sans', sans-serif;
+  --radius: 14px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-b);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+.bg-grid {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(21,96,245,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(21,96,245,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+.bg-orb { position: fixed; border-radius: 50%; filter: blur(90px); pointer-events: none; z-index: 0; animation: orbFloat 12s ease-in-out infinite alternate; }
+.bg-orb-red  { width: 520px; height: 520px; background: rgba(232,25,60,0.12); top: -120px; right: -80px; }
+.bg-orb-blue { width: 600px; height: 600px; background: rgba(21,96,245,0.12); bottom: -150px; left: -100px; animation-delay: -6s; }
+@keyframes orbFloat { 0%{transform:translate(0,0)} 100%{transform:translate(30px,-40px)} }
 
+.screen { display: none; min-height: 100vh; position: relative; z-index: 1; }
+.screen.active { display: flex; flex-direction: column; }
+
+/* BUTTONS */
+.btn { font-family: var(--font-d); font-weight: 700; font-size: 0.88rem; padding: 0.85rem 2rem; border: none; cursor: pointer; border-radius: 8px; transition: all 0.22s cubic-bezier(.17,.67,.3,1.4); letter-spacing: 0.02em; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
+.btn:hover { transform: scale(1.08); }
+.btn:active { transform: scale(0.96); }
+.btn:disabled { opacity: 0.35; pointer-events: none; }
+.btn-red  { background: var(--red); color: #fff; }
+.btn-red:hover  { box-shadow: 0 0 28px var(--red-glow); transform: scale(1.08); }
+.btn-blue { background: var(--blue); color: #fff; }
+.btn-blue:hover { box-shadow: 0 0 28px var(--blue-glow); transform: scale(1.08); }
+.btn-ghost { background: transparent; color: var(--text); border: 1.5px solid var(--border-bright); }
+.btn-ghost:hover { border-color: var(--blue-bright); color: var(--blue-bright); transform: scale(1.08); }
+.btn-lg { font-size: 1rem; padding: 1.1rem 2.8rem; border-radius: 10px; }
+.btn-full { width: 100%; }
+.btn-sm { font-size: 0.76rem; padding: 0.5rem 1.1rem; }
+
+/* INPUTS */
+.field { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px; padding: 0.85rem 1.1rem; color: var(--text); font-family: var(--font-b); font-size: 0.95rem; outline: none; width: 100%; transition: border-color 0.2s, box-shadow 0.2s; }
+.field:focus { border-color: var(--blue-bright); box-shadow: 0 0 0 3px rgba(61,127,255,0.15); }
+.field::placeholder { color: var(--muted); }
+textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
+.field-label { font-size: 0.72rem; font-weight: 600; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.45rem; }
+
+/* CARD */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
+
+/* DOTS */
+.dots { display: flex; gap: 5px; align-items: center; }
+.dot  { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: dotPop 1.2s ease-in-out infinite; }
+.dot:nth-child(2){animation-delay:.2s} .dot:nth-child(3){animation-delay:.4s}
+@keyframes dotPop { 0%,100%{opacity:.25;transform:scale(.8)} 50%{opacity:1;transform:scale(1.1)} }
+
+/* TOAST */
+.toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: var(--surface3); border: 1px solid var(--border-bright); border-radius: 10px; padding: 0.7rem 1.4rem; font-size: 0.88rem; z-index: 9999; animation: toastIn 0.3s ease, toastOut 0.3s 2.5s ease both; white-space: nowrap; }
+@keyframes toastIn  { from{opacity:0;transform:translate(-50%,10px)} to{opacity:1;transform:translate(-50%,0)} }
+@keyframes toastOut { to{opacity:0;transform:translate(-50%,10px)} }
+
+/* ===== LANDING ===== */
+#landing { align-items: center; justify-content: center; text-align: center; padding: 2rem; gap: 0; }
+.land-logo { font-family: var(--font-d); font-weight: 900; font-size: clamp(3.5rem, 13vw, 8rem); line-height: 0.9; letter-spacing: -0.04em; margin-bottom: 1.2rem; }
+.land-logo .r { color: var(--red); } .land-logo .b { color: var(--blue-bright); }
+.land-stripe { display: block; width: 260px; height: 5px; background: linear-gradient(90deg, var(--red), var(--blue)); border-radius: 99px; margin: 0.8rem auto 2rem; }
+.land-tag { font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 2.8rem; }
+.land-btns { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-bottom: 3rem; }
+.land-feats { display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center; }
+.land-feat { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--muted); }
+
+/* ===== HOST LOBBY ===== */
+#host-lobby { padding: 2.5rem 3rem; }
+.hl-top { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 2.5rem; flex-wrap: wrap; }
+.hl-logo { font-family: var(--font-d); font-size: 1.5rem; font-weight: 900; }
+.hl-logo .r{color:var(--red)} .hl-logo .b{color:var(--blue-bright)}
+.cast-badge { display: flex; align-items: center; gap: 0.5rem; background: var(--surface2); border: 1px solid var(--border-bright); border-radius: 8px; padding: 0.5rem 0.9rem; font-size: 0.75rem; color: var(--muted); }
+.room-badge { margin-left: auto; background: linear-gradient(135deg, var(--surface2), var(--surface3)); border: 2px solid var(--blue); border-radius: 14px; padding: 0.9rem 2.2rem; text-align: center; position: relative; overflow: hidden; box-shadow: 0 0 40px var(--blue-glow); }
+.room-badge::before { content:''; position:absolute; inset:0; background: linear-gradient(135deg,rgba(21,96,245,0.1),rgba(232,25,60,0.05)); }
+.room-badge-label { font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.15rem; position: relative; }
+.room-badge-code { font-family: var(--font-d); font-size: 3.2rem; font-weight: 900; letter-spacing: 0.2em; position: relative; line-height: 1; background: linear-gradient(135deg,#fff 40%,var(--blue-bright)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.room-badge-hint { font-size: 0.65rem; color: var(--muted); margin-top: 0.25rem; position: relative; }
+.hl-body { display: grid; grid-template-columns: 1fr 280px; gap: 2rem; }
+.player-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 1rem; }
+.player-card { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 14px; padding: 1.2rem 1rem; text-align: center; animation: popIn 0.4s cubic-bezier(.17,.67,.3,1.3) both; }
+@keyframes popIn { from{opacity:0;transform:scale(.6)} to{opacity:1;transform:scale(1)} }
+.pc-avatar { width: 68px; height: 68px; border-radius: 50%; margin: 0 auto 0.75rem; overflow: hidden; border: 3px solid var(--blue); display: flex; align-items: center; justify-content: center; font-family: var(--font-d); font-weight: 900; font-size: 1.5rem; }
+.pc-avatar img { width:100%; height:100%; object-fit:cover; }
+.pc-name { font-family: var(--font-d); font-weight: 700; font-size: 0.8rem; margin-bottom: 0.3rem; }
+.pc-detail { font-size: 0.7rem; color: var(--muted); line-height: 1.4; font-style: italic; }
+.hl-sidebar { display: flex; flex-direction: column; gap: 1.1rem; }
+.player-count-big { font-family: var(--font-d); font-size: 4.5rem; font-weight: 900; line-height: 1; color: var(--red); }
+.panel-title { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; font-weight: 600; }
+.settings-select { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 8px; padding: 0.65rem 1rem; color: var(--text); font-family: var(--font-b); font-size: 0.88rem; width: 100%; outline: none; }
+.settings-select:focus { border-color: var(--blue-bright); }
+
+/* ===== HOST GAME ===== */
+#host-game { padding: 2.5rem; align-items: center; justify-content: center; }
+.hg-inner { width: 100%; max-width: 760px; }
+.hg-top { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.hg-question { background: linear-gradient(135deg,var(--surface),var(--surface2)); border: 1.5px solid var(--border-bright); border-radius: 20px; padding: 3rem 2.5rem; text-align: center; margin-bottom: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+.hg-q-text { font-family: var(--font-d); font-size: clamp(1.3rem,4vw,2.2rem); font-weight: 700; line-height: 1.25; }
+.hg-sub { color: var(--muted); font-size: 0.88rem; margin-top: 1.2rem; display: flex; align-items: center; justify-content: center; gap: 0.7rem; }
+.answers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 2rem; }
+.answer-card { background: var(--surface); border: 2px solid var(--border-bright); border-radius: 14px; padding: 1.5rem; position: relative; transition: all 0.2s; }
+.answer-card.has-votes { border-color: var(--blue); box-shadow: 0 0 20px var(--blue-glow); }
+.answer-ltr { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+.answer-txt { font-size: 1rem; font-weight: 500; line-height: 1.45; }
+.vote-bubble { position: absolute; top: 1rem; right: 1rem; background: var(--blue); color: #fff; font-family: var(--font-d); font-weight: 700; font-size: 0.78rem; padding: 0.2rem 0.6rem; border-radius: 99px; }
+
+/* ===== HOST SCORES ===== */
+#host-scores { padding: 2.5rem; align-items: center; justify-content: center; }
+.hs-inner { max-width: 580px; width: 100%; }
+.hs-title { font-family: var(--font-d); font-weight: 900; text-align: center; font-size: clamp(2.5rem,8vw,5rem); line-height: 0.9; margin-bottom: 0.5rem; }
+.hs-title .r{color:var(--red)} .hs-title .b{color:var(--blue-bright)}
+.score-list { display: flex; flex-direction: column; gap: 1rem; margin: 2.5rem 0; }
+.score-row { display: flex; align-items: center; gap: 1rem; background: var(--surface); border: 1px solid var(--border-bright); border-radius: 14px; padding: 1rem 1.4rem; animation: slideInLeft 0.5s ease both; }
+@keyframes slideInLeft { from{opacity:0;transform:translateX(-20px)} to{opacity:1;transform:translateX(0)} }
+.sr-rank { font-family: var(--font-d); font-weight: 900; font-size: 1.5rem; width: 2rem; flex-shrink: 0; }
+.sr-rank.g1{color:#FFD700} .sr-rank.g2{color:#C0C0C0} .sr-rank.g3{color:#CD7F32}
+.sr-avatar { width: 44px; height: 44px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 2px solid var(--border-bright); display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-weight:900;font-size:1rem; }
+.sr-avatar img { width:100%;height:100%;object-fit:cover; }
+.sr-info { flex: 1; }
+.sr-name { font-weight: 600; margin-bottom: 0.3rem; font-size: 0.95rem; }
+.sr-bar-wrap { height: 5px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+.sr-bar { height: 100%; border-radius: 99px; transition: width 1.2s cubic-bezier(.22,1,.36,1); }
+.sr-pts { font-family: var(--font-d); font-weight: 700; font-size: 1.2rem; color: var(--blue-bright); flex-shrink: 0; }
+
+/* ===== JOIN ===== */
+#join { align-items: center; justify-content: center; padding: 1.5rem; background: radial-gradient(ellipse 70% 50% at 50% 20%, rgba(21,96,245,0.12) 0%, transparent 70%); }
+.join-logo { font-family: var(--font-d); font-weight: 900; font-size: 2rem; text-align: center; margin-bottom: 1.8rem; }
+.join-logo .r{color:var(--red)} .join-logo .b{color:var(--blue-bright)}
+.join-card { background: var(--surface); border: 1px solid var(--border-bright); border-radius: 20px; padding: 2rem; width: 100%; max-width: 400px; }
+.join-h2 { font-family: var(--font-d); font-size: 1.15rem; margin-bottom: 0.4rem; }
+.join-sub { color: var(--muted); font-size: 0.82rem; margin-bottom: 1.6rem; line-height: 1.5; }
+.join-form { display: flex; flex-direction: column; gap: 1rem; }
+.code-field { font-family: var(--font-d); font-size: 1.8rem; font-weight: 900; letter-spacing: 0.3em; text-align: center; text-transform: uppercase; }
+.avatar-upload-wrap { display: flex; align-items: center; gap: 1.2rem; }
+.avatar-circle { width: 70px; height: 70px; border-radius: 50%; flex-shrink: 0; background: var(--surface2); border: 2px dashed var(--border-bright); display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer; transition: border-color 0.2s; position: relative; }
+.avatar-circle:hover { border-color: var(--blue-bright); }
+.avatar-circle img { width:100%;height:100%;object-fit:cover;position:absolute;inset:0; }
+.avatar-info h4 { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.2rem; }
+.avatar-info p { font-size: 0.73rem; color: var(--muted); line-height: 1.4; }
+#avatar-file-input { display: none; }
+
+/* ===== PLAYER WAITING ===== */
+#player-waiting { align-items: center; justify-content: center; padding: 1.5rem; background: radial-gradient(ellipse 70% 40% at 50% 50%, rgba(232,25,60,0.07) 0%, transparent 70%); }
+.pw-card { background: var(--surface); border: 1px solid var(--border-bright); border-radius: 20px; padding: 2.5rem 2rem; max-width: 360px; width: 100%; text-align: center; }
+.pw-avatar { width: 88px; height: 88px; border-radius: 50%; margin: 0 auto 1.1rem; overflow: hidden; border: 3px solid var(--blue); display: flex; align-items: center; justify-content: center; font-family: var(--font-d); font-weight: 900; font-size: 2rem; }
+.pw-avatar img { width:100%;height:100%;object-fit:cover; }
+.pw-name { font-family: var(--font-d); font-size: 1.5rem; font-weight: 900; margin-bottom: 0.4rem; }
+.pw-detail { font-size: 0.82rem; color: var(--muted); font-style: italic; padding: 0.5rem 1rem; background: var(--surface2); border-radius: 99px; display: inline-block; margin-bottom: 1.8rem; }
+.pw-status { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.5rem; }
+.pw-code { font-family: var(--font-d); font-size: 1.3rem; font-weight: 900; letter-spacing: 0.2em; color: var(--blue-bright); background: var(--blue-dim); border: 1px solid rgba(61,127,255,0.3); border-radius: 10px; padding: 0.45rem 1.1rem; display: inline-block; margin-bottom: 1.5rem; }
+
+/* ===== PLAYER ANSWER ===== */
+#player-answer { padding: 1.2rem; gap: 1rem; justify-content: center; }
+.pa-inner { max-width: 480px; width: 100%; display: flex; flex-direction: column; gap: 1rem; margin: auto; }
+.pa-question { background: linear-gradient(135deg,var(--surface),var(--surface2)); border: 1.5px solid var(--border-bright); border-radius: 16px; padding: 1.4rem; }
+.pa-qlabel { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+.pa-qtext { font-family: var(--font-d); font-size: 1rem; font-weight: 700; line-height: 1.35; }
+.pa-input-card { background: var(--surface); border: 1px solid var(--border-bright); border-radius: 16px; padding: 1.2rem; }
+.pa-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 0.8rem; }
+.pa-timer { font-family: var(--font-d); font-size: 1.05rem; font-weight: 700; color: var(--blue-bright); display: flex; align-items: center; gap: 0.35rem; }
+.pa-timer.urgent { color: var(--red); animation: timerPulse 0.5s ease infinite alternate; }
+@keyframes timerPulse { from{opacity:1} to{opacity:.4} }
+
+/* ===== PLAYER VOTE ===== */
+#player-vote { padding: 1.2rem; gap: 1rem; justify-content: center; }
+.pv-inner { max-width: 480px; width: 100%; display: flex; flex-direction: column; gap: 1rem; margin: auto; }
+.pv-head { background: var(--surface); border: 1px solid var(--border-bright); border-radius: 14px; padding: 1.2rem; }
+.pv-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem; }
+.pv-qtext { font-family: var(--font-d); font-size: 0.95rem; font-weight: 700; line-height: 1.3; }
+.vote-cards { display: flex; flex-direction: column; gap: 0.75rem; }
+.vote-card { background: var(--surface); border: 2px solid var(--border); border-radius: 14px; padding: 1rem 1.2rem; cursor: pointer; transition: all 0.18s ease; display: flex; align-items: center; gap: 1rem; }
+.vote-card:hover { border-color: var(--blue-bright); transform: translateY(-2px); }
+.vote-card.selected { border-color: var(--blue); background: var(--blue-dim); box-shadow: 0 0 20px var(--blue-glow); }
+.vc-letter { width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-family: var(--font-d); font-weight: 700; font-size: 0.82rem; color: var(--muted); }
+.vote-card.selected .vc-letter { background: var(--blue); color: #fff; }
+.vc-text { font-size: 0.92rem; line-height: 1.4; font-weight: 500; }
+
+/* ===== PLAYER DONE ===== */
+#player-done { align-items: center; justify-content: center; padding: 2rem; text-align: center; }
+.done-ring { width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--blue); display: flex; align-items: center; justify-content: center; font-size: 2.8rem; margin: 0 auto 1.5rem; box-shadow: 0 0 40px var(--blue-glow); animation: ringPop 0.5s cubic-bezier(.17,.67,.3,1.3); }
+@keyframes ringPop { from{transform:scale(0)} to{transform:scale(1)} }
+.done-title { font-family: var(--font-d); font-weight: 900; font-size: 2rem; margin-bottom: 0.6rem; }
+.done-sub { color: var(--muted); font-size: 0.93rem; line-height: 1.5; max-width: 280px; }
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-orb bg-orb-red"></div>
+<div class="bg-orb bg-orb-blue"></div>
+
+<!-- LANDING -->
+<div class="screen active" id="landing">
+  <div class="land-logo"><span class="r">HUIZE</span><br><span class="b">JULES</span><span class="land-stripe"></span></div>
+  <div class="land-tag">HuizeJules · Geen app nodig · Cast naar je TV</div>
+  <div class="land-btns">
+    <button class="btn btn-red btn-lg" onclick="showHostLobby()">
+      <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      Host een spel
+    </button>
+    <button class="btn btn-blue btn-lg" onclick="showJoin()">
+      <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      Doe mee
+    </button>
+  </div>
+  <div class="land-feats">
+    <div class="land-feat"><svg width="14" height="14" fill="none" stroke="var(--blue-bright)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Gratis in de browser</div>
+    <div class="land-feat"><svg width="14" height="14" fill="none" stroke="var(--blue-bright)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Cast via AirPlay of Chromecast</div>
+    <div class="land-feat"><svg width="14" height="14" fill="none" stroke="var(--blue-bright)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Speel op je telefoon</div>
+  </div>
+</div>
+
+<!-- HOST LOBBY -->
+<div class="screen" id="host-lobby">
+  <div class="hl-top">
+    <div class="hl-logo"><span class="r">HUIZE</span><span class="b">JULES</span></div>
+    <div class="cast-badge">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8"/><path d="M2 17a5 5 0 0 1 5 5"/><path d="M2 12a10 10 0 0 1 10 10"/></svg>
+      Cast dit scherm naar je TV
+    </div>
+    <div class="room-badge">
+      <div class="room-badge-label">Room code</div>
+      <div class="room-badge-code" id="room-code-display">····</div>
+      <div class="room-badge-hint">Ga naar huizejules.nl en voer deze code in</div>
+    </div>
+  </div>
+  <div class="hl-body">
+    <div>
+      <div class="panel-title" id="lobby-count-label">Wachten op spelers…</div>
+      <div class="player-grid" id="player-grid">
+        <div style="border:2px dashed var(--border);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:140px;color:var(--muted);font-size:0.78rem;gap:0.5rem">
+          <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Wachten op spelers…
+        </div>
+      </div>
+    </div>
+    <div class="hl-sidebar">
+      <div class="card">
+        <div class="panel-title">Spelers verbonden</div>
+        <div class="player-count-big" id="player-count">0</div>
+        <div style="color:var(--muted);font-size:0.82rem">spelers</div>
+      </div>
+      <div class="card">
+        <div class="panel-title">Instellingen</div>
+        <div style="display:flex;flex-direction:column;gap:0.75rem">
+          <div>
+            <div class="panel-title" style="margin-bottom:0.35rem">Rondes</div>
+            <select id="rounds-select" class="settings-select">
+              <option value="1">1 ronde</option>
+              <option value="2">2 rondes</option>
+              <option value="3">3 rondes</option>
+              <option value="5">5 rondes</option>
+              <option value="10" selected>10 rondes</option>
+            </select>
+          </div>
+          <div>
+            <div class="panel-title" style="margin-bottom:0.35rem">Antwoordtijd</div>
+            <select id="time-select" class="settings-select">
+              <option value="45">45 seconden</option>
+              <option value="60" selected>60 seconden</option>
+              <option value="90">90 seconden</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-red btn-full" id="start-btn" onclick="startGame()" disabled>Wacht op spelers…</button>
+      <button class="btn btn-ghost btn-sm" onclick="addFakePlayer()">+ Demo-speler toevoegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- HOST GAME -->
+<div class="screen" id="host-game">
+  <div style="padding:2.5rem;width:100%;display:flex;flex-direction:column;align-items:center">
+    <div class="hg-inner">
+      <div class="hg-top">
+        <span id="round-label">Ronde 1</span>
+        <div class="cast-badge" style="margin-left:auto">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8"/><path d="M2 17a5 5 0 0 1 5 5"/><path d="M2 12a10 10 0 0 1 10 10"/></svg>
+          Gecast naar TV
+        </div>
+      </div>
+      <div class="hg-question">
+        <div class="hg-q-text" id="host-question-text">—</div>
+        <div class="hg-sub" id="host-waiting">
+          <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <span id="answers-received">0</span>/<span id="answers-total">0</span> antwoorden ontvangen
+        </div>
+      </div>
+      <div id="host-vote-section" style="display:none">
+        <div style="text-align:center;font-size:0.7rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:1.5rem">Spelers stemmen op het beste antwoord</div>
+        <div class="answers-grid" id="host-answers-grid"></div>
+        <div style="text-align:center"><button class="btn btn-red" onclick="showScores()">Bekijk scores →</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HOST SCORES -->
+<div class="screen" id="host-scores">
+  <div style="padding:2.5rem;width:100%;display:flex;flex-direction:column;align-items:center">
+    <div class="hs-inner">
+      <div class="hs-title"><span class="r">HUIZE</span><span class="b">JULES</span></div>
+      <div class="score-list" id="score-list"></div>
+      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-red" id="next-round-btn" onclick="nextRound()">Volgende ronde →</button>
+        <button class="btn btn-ghost" onclick="endGame()">Spel beëindigen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JOIN -->
+<div class="screen" id="join">
+  <div class="join-logo"><span class="r">HUIZE</span><span class="b">JULES</span></div>
+  <div class="join-card">
+    <div class="join-h2">Doe mee!</div>
+    <div class="join-sub">Voer de room code in die op de TV staat, kies een naam en upload een profielfoto.</div>
+    <div class="join-form">
+      <div>
+        <div class="field-label">Room code (van de TV)</div>
+        <input class="field code-field" id="join-code" placeholder="XXXX" maxlength="4" oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <div>
+        <div class="field-label">Profielfoto</div>
+        <div class="avatar-upload-wrap">
+          <div class="avatar-circle" id="avatar-preview-box" onclick="document.getElementById('avatar-file-input').click()" title="Klik om foto te kiezen">
+            <svg width="22" height="22" fill="none" stroke="var(--muted)" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <input type="file" id="avatar-file-input" accept="image/*" onchange="handleAvatarUpload(event)">
+          <div class="avatar-info">
+            <h4>Foto uploaden</h4>
+            <p>Tik op het cirkeltje. Jouw foto verschijnt in de lobby op de TV.</p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="field-label">Jouw naam</div>
+        <input class="field" id="join-name" placeholder="Bijv. Daan" maxlength="16">
+      </div>
+      <div>
+        <div class="field-label">Eén ding over jezelf</div>
+        <input class="field" id="join-detail" placeholder="Bijv. Ik slaap in de bioscoop" maxlength="60">
+      </div>
+      <button class="btn btn-blue btn-full" onclick="joinGame()">Verbinden →</button>
+    </div>
+    <button class="btn btn-ghost btn-sm btn-full" onclick="show('landing')" style="margin-top:1rem">← Terug</button>
+  </div>
+</div>
+
+<!-- PLAYER WAITING -->
+<div class="screen" id="player-waiting">
+  <div class="pw-card">
+    <div class="pw-avatar" id="pw-avatar">?</div>
+    <div class="pw-name" id="pw-name">—</div>
+    <div class="pw-detail" id="pw-detail" style="display:none"></div>
+    <div class="pw-status">Verbonden met room</div>
+    <div class="pw-code" id="pw-code">····</div>
+    <div style="color:var(--muted);font-size:0.85rem;margin-bottom:1.5rem">Wacht tot de host het spel start…</div>
+    <div class="dots" style="justify-content:center"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+  </div>
+</div>
+
+<!-- PLAYER ANSWER -->
+<div class="screen" id="player-answer">
+  <div class="pa-inner">
+    <div class="pa-question">
+      <div class="pa-qlabel">Jouw vraag</div>
+      <div class="pa-qtext" id="p-question-text">—</div>
+    </div>
+    <div class="pa-input-card">
+      <div class="field-label">Jouw grappigste antwoord</div>
+      <textarea class="field" id="player-answer-text" placeholder="Type hier iets hilarisch…"></textarea>
+      <div class="pa-footer">
+        <div class="pa-timer" id="p-timer">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span id="p-timer-val">60</span> sec
+        </div>
+        <button class="btn btn-red" onclick="submitAnswer()">Insturen →</button>
+      </div>
+    </div>
+    <div style="color:var(--muted);font-size:0.78rem;text-align:center">Wees grappig, slim, of totaal gestoord.</div>
+  </div>
+</div>
+
+<!-- PLAYER VOTE -->
+<div class="screen" id="player-vote">
+  <div class="pv-inner">
+    <div class="pv-head">
+      <div class="pv-label">Stem op het beste antwoord</div>
+      <div class="pv-qtext" id="vote-question-text">—</div>
+    </div>
+    <div class="vote-cards" id="vote-options"></div>
+    <button class="btn btn-blue btn-full" id="vote-submit-btn" onclick="submitVote()" disabled>Stem uitbrengen →</button>
+  </div>
+</div>
+
+<!-- PLAYER DONE -->
+<div class="screen" id="player-done">
+  <div class="done-ring">✓</div>
+  <div class="done-title">Goed gedaan!</div>
+  <div class="done-sub" id="done-sub">Wacht tot de host de scores toont op de TV.</div>
+</div>
+
+<script>
+const PALETTE = ['#e8193c','#1560f5','#9c27b0','#ff6d00','#00897b','#c62828','#283593','#558b2f','#f57f17','#00838f'];
+const QUESTIONS = [
+  "Als dieren konden stemmen, welk dier zou altijd verliezen en waarom?",
+  "Wat zou de slechste superkracht zijn om te hebben tijdens een date?",
+  "Beschrijf de wereld als een koelkast die beslist heeft het op te geven.",
+  "Wat zou de slechtste naam zijn voor een kinderdagverblijf?",
+  "Als je leven een Netflix-serie was, wat zou de beschamende ondertitel zijn?",
+  "Wat is het domste dat iemand ooit met wetenschap kon bewijzen?",
+  "Beschrijf maandag als een persoon op een feestje.",
+  "Wat zou de meest nutteloze uitvinding ooit zijn?",
+  "Als emoties belasting betaalden, welke zou het meeste schulden hebben?",
+  "Wat zou een hond schrijven in zijn dagboek na een slechte dag?",
+  "Bedenk een waarschuwingslabel voor mensen.",
+  "Wat zou jouw superheldennaam zijn als je superpower 'slecht parkeren' was?",
+];
+
+let state = {
+  mode: null, roomCode: '',
+  players: [], myName: '', myDetail: '', myColor: '', myPhoto: null,
+  currentRound: 0, totalRounds: 2,
+  answers: {}, votes: {}, scores: {}, questions: [],
+  myAnswered: false, myVote: null,
+};
+
+const ch = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('partygame_v3') : null;
+if (ch) ch.onmessage = e => handleMessage(e.data);
+function send(msg) { if (ch) ch.postMessage(msg); }
+
+function handleMessage(msg) {
+  if (msg.type === 'player-join' && state.mode === 'host') {
+    if (!state.players.find(p => p.name === msg.name)) {
+      state.players.push({ name: msg.name, detail: msg.detail, color: msg.color, photo: msg.photo });
+      state.scores[msg.name] = 0;
+      renderLobby();
+      toast(`${msg.name} heeft meegedaan! 🎉`);
+    }
+  }
+  if (msg.type === 'game-start' && state.mode === 'player') {
+    state.questions = msg.questions;
+    state.totalRounds = msg.totalRounds;
+    showPlayerAnswer();
+  }
+  if (msg.type === 'player-answer' && state.mode === 'host') {
+    state.answers[msg.name] = msg.answer;
+    document.getElementById('answers-received').textContent = Object.keys(state.answers).length;
+    if (Object.keys(state.answers).length >= state.players.length) showVotePhase();
+  }
+  if (msg.type === 'player-vote' && state.mode === 'host') {
+    state.votes[msg.name] = msg.vote;
+    const card = document.querySelector(`[data-akey="${CSS.escape(msg.vote.slice(0,30))}"]`);
+    if (card) {
+      let bub = card.querySelector('.vote-bubble');
+      if (!bub) { bub = document.createElement('div'); bub.className = 'vote-bubble'; bub.textContent = '0'; card.appendChild(bub); }
+      bub.textContent = parseInt(bub.textContent) + 1;
+      card.classList.add('has-votes');
+    }
+    if (Object.keys(state.votes).length >= state.players.length) setTimeout(showScores, 1500);
+  }
+  if (msg.type === 'show-vote' && state.mode === 'player') showPlayerVote(msg.question, msg.answers);
+  if (msg.type === 'show-scores' && state.mode === 'player') {
+    show('player-done');
+    document.getElementById('done-sub').textContent = msg.isLast
+      ? 'Het spel is voorbij! Bekijk de eindstand op de TV.' : 'Volgende ronde komt eraan…';
+  }
+}
+
+function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+
+function showHostLobby() {
+  state.mode = 'host'; state.roomCode = rndCode();
+  state.players = []; state.scores = {};
+  document.getElementById('room-code-display').textContent = state.roomCode;
+  document.getElementById('player-count').textContent = '0';
+  document.getElementById('player-grid').innerHTML = `<div style="border:2px dashed var(--border);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:140px;color:var(--muted);font-size:0.78rem;gap:0.5rem"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Wachten…</div>`;
+  document.getElementById('start-btn').disabled = true;
+  document.getElementById('start-btn').textContent = 'Wacht op spelers…';
+  show('host-lobby');
+}
+
+function showJoin() { state.mode = 'player'; show('join'); }
+
+function renderLobby() {
+  document.getElementById('player-grid').innerHTML = state.players.map((p,i) => `
+    <div class="player-card" style="animation-delay:${i*0.07}s;border-color:${p.color}55">
+      <div class="pc-avatar" style="border-color:${p.color};box-shadow:0 0 18px ${p.color}44">
+        ${p.photo ? `<img src="${p.photo}" alt="${esc(p.name)}">` : `<span style="color:${p.color}">${p.name[0].toUpperCase()}</span>`}
+      </div>
+      <div class="pc-name">${esc(p.name)}</div>
+      ${p.detail ? `<div class="pc-detail">${esc(p.detail)}</div>` : ''}
+    </div>`).join('');
+  const n = state.players.length;
+  document.getElementById('player-count').textContent = n;
+  document.getElementById('lobby-count-label').textContent = n === 0 ? 'Wachten op spelers…' : `${n} speler${n>1?'s':''} in de lobby`;
+  const btn = document.getElementById('start-btn');
+  if (n >= 2) { btn.disabled = false; btn.textContent = `Start het spel! (${n} spelers)`; }
+  else { btn.disabled = true; btn.textContent = n===1 ? 'Nog minimaal 1 speler nodig…' : 'Wacht op spelers…'; }
+}
+
+function handleAvatarUpload(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    state.myPhoto = ev.target.result;
+    const box = document.getElementById('avatar-preview-box');
+    box.innerHTML = `<img src="${ev.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;position:absolute;inset:0">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+const FAKE_NAMES = ['Anna','Boris','Chloe','Daan','Eva','Finn','Gaby','Hank','Iris','Jaap','Kira','Ludo'];
+const FAKE_DETAILS = ['Ik heb nog nooit een film helemaal uitgekeken','Mijn kat heet Kanye','Ik heb 3 koelkasten','Ik ben hier alleen voor het eten','Ik slaap altijd in de bioscoop'];
+function addFakePlayer() {
+  const avail = FAKE_NAMES.filter(n => !state.players.find(p=>p.name===n));
+  if (!avail.length) { toast('Max demo-spelers bereikt'); return; }
+  const name = avail[Math.floor(Math.random()*avail.length)];
+  const detail = FAKE_DETAILS[Math.floor(Math.random()*FAKE_DETAILS.length)];
+  const color = PALETTE[state.players.length % PALETTE.length];
+  state.players.push({name,detail,color,photo:null});
+  state.scores[name] = 0;
+  renderLobby();
+  toast(`${name} heeft meegedaan!`);
+}
+
+function joinGame() {
+  const code = document.getElementById('join-code').value.trim().toUpperCase();
+  const name = document.getElementById('join-name').value.trim();
+  const detail = document.getElementById('join-detail').value.trim();
+  if (code.length !== 4) { toast('Voer een geldige 4-letter room code in'); return; }
+  if (!name) { toast('Kies een naam'); return; }
+  state.myName = name; state.myDetail = detail; state.myColor = PALETTE[Math.floor(Math.random()*PALETTE.length)]; state.roomCode = code;
+  const pw = document.getElementById('pw-avatar');
+  if (state.myPhoto) {
+    pw.innerHTML = `<img src="${state.myPhoto}" alt="avatar">`;
+    pw.style.cssText = `border:3px solid ${state.myColor};box-shadow:0 0 30px ${state.myColor}55`;
+  } else {
+    pw.textContent = name[0].toUpperCase();
+    pw.style.cssText = `background:${state.myColor}22;color:${state.myColor};border:3px solid ${state.myColor};box-shadow:0 0 30px ${state.myColor}55`;
+  }
+  document.getElementById('pw-name').textContent = name;
+  const det = document.getElementById('pw-detail');
+  if (detail) { det.textContent = detail; det.style.display = ''; } else det.style.display = 'none';
+  document.getElementById('pw-code').textContent = code;
+  const payload = {type:'player-join',name,detail,color:state.myColor,photo:state.myPhoto};
+  send(payload);
+  if (!ch || state.mode==='host') handleMessage(payload);
+  show('player-waiting');
+}
+
+function startGame() {
+  state.totalRounds = parseInt(document.getElementById('rounds-select').value);
+  state.currentRound = 0;
+  state.questions = shuffle([...QUESTIONS]).slice(0, state.totalRounds);
+  send({type:'game-start',questions:state.questions,totalRounds:state.totalRounds});
+  startRound();
+}
+
+function startRound() {
+  state.answers = {}; state.votes = {}; state.myAnswered = false; state.myVote = null;
+  const q = state.questions[state.currentRound];
+  document.getElementById('round-label').textContent = `Ronde ${state.currentRound+1} van ${state.totalRounds}`;
+  document.getElementById('host-question-text').textContent = q;
+  document.getElementById('answers-received').textContent = '0';
+  document.getElementById('answers-total').textContent = state.players.length;
+  document.getElementById('host-waiting').style.display = 'flex';
+  document.getElementById('host-vote-section').style.display = 'none';
+  show('host-game');
+}
+
+function showVotePhase() {
+  document.getElementById('host-waiting').style.display = 'none';
+  document.getElementById('host-vote-section').style.display = 'block';
+  const entries = Object.entries(state.answers);
+  document.getElementById('host-answers-grid').innerHTML = entries.map(([name,answer],i) => `
+    <div class="answer-card" data-akey="${esc(answer.slice(0,30))}">
+      <div class="answer-ltr">Antwoord ${String.fromCharCode(65+i)}</div>
+      <div class="answer-txt">"${esc(answer)}"</div>
+    </div>`).join('');
+  const q = state.questions[state.currentRound];
+  send({type:'show-vote',question:q,answers:entries.map(([n,a])=>({name:n,answer:a}))});
+}
+
+function showScores() {
+  Object.entries(state.votes).forEach(([voter,voted]) => {
+    const author = Object.entries(state.answers).find(([n,a]) => a===voted);
+    if (author) state.scores[author[0]] = (state.scores[author[0]]||0) + 500;
+  });
+  const isLast = state.currentRound >= state.totalRounds-1;
+  send({type:'show-scores',isLast});
+  const sorted = Object.entries(state.scores).sort((a,b)=>b[1]-a[1]);
+  const max = sorted[0]?.[1]||1;
+  const ranks = ['g1','g2','g3'];
+  const bars = ['linear-gradient(90deg,#FFD700,#ffaa00)','linear-gradient(90deg,#C0C0C0,#aaa)','linear-gradient(90deg,#CD7F32,#a05a20)','linear-gradient(90deg,var(--blue),var(--blue-bright))'];
+  document.getElementById('score-list').innerHTML = sorted.map(([name,pts],i) => {
+    const p = state.players.find(pl=>pl.name===name);
+    const av = p?.photo ? `<img src="${p.photo}" alt="${esc(name)}">` : `<span style="color:${p?.color||'#fff'}">${name[0]}</span>`;
+    return `<div class="score-row" style="animation-delay:${i*0.12}s">
+      <div class="sr-rank ${ranks[i]||''}">${i+1}</div>
+      <div class="sr-avatar" style="border-color:${p?.color||'var(--border-bright)'}">${av}</div>
+      <div class="sr-info">
+        <div class="sr-name">${esc(name)}</div>
+        <div class="sr-bar-wrap"><div class="sr-bar" style="width:${Math.max(8,(pts/max)*100)}%;background:${bars[Math.min(i,3)]}"></div></div>
+      </div>
+      <div class="sr-pts">${pts}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('next-round-btn').style.display = isLast ? 'none' : '';
+  show('host-scores');
+}
+
+function nextRound() { state.currentRound++; if (state.currentRound < state.totalRounds) startRound(); else endGame(); }
+function endGame() { state.mode = null; show('landing'); }
+
+function showPlayerAnswer() {
+  document.getElementById('p-question-text').textContent = state.questions[state.currentRound];
+  document.getElementById('player-answer-text').value = '';
+  state.myAnswered = false;
+  show('player-answer');
+  startTimer();
+}
+
+let timerInterval;
+function startTimer() {
+  clearInterval(timerInterval);
+  const secs = parseInt(document.getElementById('time-select')?.value||60);
+  let rem = secs;
+  const el = document.getElementById('p-timer-val');
+  const timerEl = document.getElementById('p-timer');
+  el.textContent = rem;
+  timerInterval = setInterval(() => {
+    rem--;
+    el.textContent = rem;
+    timerEl.classList.toggle('urgent', rem<=10);
+    if (rem<=0) { clearInterval(timerInterval); autoSubmit(); }
+  }, 1000);
+}
+
+function autoSubmit() { if (!state.myAnswered) { if (!document.getElementById('player-answer-text').value.trim()) document.getElementById('player-answer-text').value='(geen antwoord)'; submitAnswer(); } }
+
+function submitAnswer() {
+  if (state.myAnswered) return;
+  clearInterval(timerInterval); state.myAnswered = true;
+  const answer = document.getElementById('player-answer-text').value.trim()||'(geen antwoord)';
+  const payload = {type:'player-answer',name:state.myName,answer};
+  send(payload); if (!ch) handleMessage(payload);
+  show('player-done');
+  document.getElementById('done-sub').textContent = 'Wacht op de andere spelers…';
+}
+
+function showPlayerVote(question, answers) {
+  document.getElementById('vote-question-text').textContent = question;
+  state.myVote = null;
+  const myAnswer = state.answers?.[state.myName];
+  const opts = answers.filter(a => a.answer !== myAnswer);
+  document.getElementById('vote-options').innerHTML = opts.map((a,i) => `
+    <div class="vote-card" onclick="selectVote(${i},'${esc(a.answer).replace(/'/g,"&#39;")}')">
+      <div class="vc-letter">${String.fromCharCode(65+i)}</div>
+      <div class="vc-text">"${esc(a.answer)}"</div>
+    </div>`).join('');
+  document.getElementById('vote-submit-btn').disabled = true;
+  show('player-vote');
+}
+
+function selectVote(idx, answer) {
+  state.myVote = answer;
+  document.querySelectorAll('.vote-card').forEach((el,i) => el.classList.toggle('selected',i===idx));
+  document.getElementById('vote-submit-btn').disabled = false;
+}
+
+function submitVote() {
+  if (!state.myVote) return;
+  const payload = {type:'player-vote',name:state.myName,vote:state.myVote};
+  send(payload); if (!ch) handleMessage(payload);
+  show('player-done');
+  document.getElementById('done-sub').textContent = 'Stem uitgebracht! Wacht op de scores op de TV…';
+}
+
+function rndCode() { return Math.random().toString(36).substring(2,6).toUpperCase(); }
+function shuffle(a) { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]} return a; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg) { const el=document.createElement('div'); el.className='toast'; el.textContent=msg; document.body.appendChild(el); setTimeout(()=>el.remove(),3000); }
+</script>
+</body>
+</html>
