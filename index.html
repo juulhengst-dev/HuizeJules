@@ -38,6 +38,34 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
 }
+#site-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(rgba(7,7,26,0.52), rgba(7,7,26,0.52)),
+    url('37652bb2-c56a-4c89-9602-d8ca758ef239.png') center/cover no-repeat;
+  opacity: 0; transition: opacity 0.7s ease;
+}
+#site-bg.zichtbaar { opacity: 1; }
+
+/* ===== PODIUM ===== */
+.podium-scene { display: flex; align-items: flex-end; justify-content: center; gap: 0.6rem; margin: 1rem 0 0; }
+.podium-col { display: flex; flex-direction: column; align-items: center; }
+.podium-top-pts { font-family: var(--font-d); font-size: 0.78rem; color: var(--muted); margin-bottom: 0.3rem; }
+.podium-pname { font-family: var(--font-d); font-weight: 700; font-size: 0.75rem; text-align: center; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.4rem; }
+.podium-av { width: 62px; height: 62px; border-radius: 50%; overflow: hidden; border: 3px solid #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-d); font-weight: 900; font-size: 1.4rem; margin-bottom: 0.5rem; flex-shrink: 0; }
+.podium-av img { width: 100%; height: 100%; object-fit: cover; }
+.podium-block { width: 115px; border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: center; }
+.podium-block.p1 { height: 145px; background: linear-gradient(170deg,#ffe066,#cc9900); box-shadow: 0 0 40px rgba(255,215,0,0.35); }
+.podium-block.p2 { height: 105px; background: linear-gradient(170deg,#e0e0e0,#909090); box-shadow: 0 0 25px rgba(192,192,192,0.2); }
+.podium-block.p3 { height: 75px; background: linear-gradient(170deg,#e0924a,#8b5e2d); box-shadow: 0 0 25px rgba(205,127,50,0.2); }
+.podium-num { font-family: var(--font-d); font-size: 2.8rem; font-weight: 900; color: rgba(0,0,0,0.3); line-height: 1; }
+.podium-rest { display: flex; flex-direction: column; gap: 0.6rem; width: 100%; max-width: 480px; margin-top: 1.2rem; }
+.podium-rest-row { display: flex; align-items: center; gap: 0.8rem; background: var(--surface); border: 1px solid var(--border-bright); border-radius: 12px; padding: 0.75rem 1.1rem; }
+.pr-rank { font-family: var(--font-d); font-size: 1.1rem; font-weight: 900; color: var(--muted); width: 1.8rem; }
+.pr-av { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; border: 2px solid var(--border-bright); display: flex; align-items: center; justify-content: center; font-family: var(--font-d); font-weight: 900; font-size: 0.9rem; flex-shrink: 0; }
+.pr-av img { width: 100%; height: 100%; object-fit: cover; }
+.pr-name { flex: 1; font-weight: 600; font-size: 0.88rem; }
+.pr-pts { font-family: var(--font-d); font-weight: 700; font-size: 1rem; color: var(--blue-bright); }
+
 .bg-grid {
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background-image:
@@ -263,6 +291,7 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 <body>
 <audio id="bg-music" src="Moavii - Thats Right (freetouse.com).mp3" loop preload="auto"></audio>
 
+<div id="site-bg"></div>
 <div class="bg-grid"></div>
 <div class="bg-orb bg-orb-red"></div>
 <div class="bg-orb bg-orb-blue"></div>
@@ -397,14 +426,13 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 
 <!-- HOST SCORES -->
 <div class="screen" id="host-scores">
-  <div style="padding:2.5rem;width:100%;display:flex;flex-direction:column;align-items:center">
-    <div class="hs-inner">
-      <div class="hs-title"><span class="r">HUIZE</span><span class="b">JULES</span></div>
-      <div class="score-list" id="score-list"></div>
-      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
-        <button class="btn btn-red" id="next-round-btn" onclick="nextRound()">Volgende ronde →</button>
-        <button class="btn btn-ghost" onclick="endGame()">Spel beëindigen</button>
-      </div>
+  <div style="padding:2rem 1.5rem;width:100%;display:flex;flex-direction:column;align-items:center">
+    <div class="hs-title" style="margin-bottom:0.3rem"><span class="r">SCORE</span><span class="b">BORD</span></div>
+    <div id="podium-wrap" style="width:100%;max-width:520px;display:flex;flex-direction:column;align-items:center"></div>
+    <div class="podium-rest" id="score-list"></div>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-top:1.8rem">
+      <button class="btn btn-red" id="next-round-btn" onclick="nextRound()">Volgende ronde →</button>
+      <button class="btn btn-ghost" onclick="endGame()">Spel beëindigen</button>
     </div>
   </div>
 </div>
@@ -554,7 +582,12 @@ function roomRoot() { return db.ref(`rooms/${state.roomCode}`); }
 function addListener(ref, event, fn) { ref.on(event, fn); activeListeners.push({ ref, event, fn }); }
 function clearListeners() { activeListeners.forEach(({ ref, event, fn }) => ref.off(event, fn)); activeListeners = []; }
 
-function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+const SCHERMEN_MET_BG = new Set(['landing','game-select','join','player-waiting','player-answer','player-vote','player-done','host-lobby','host-game']);
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('site-bg').classList.toggle('zichtbaar', SCHERMEN_MET_BG.has(id));
+}
 
 // ===== HOST =====
 function selectGame(mode) {
@@ -863,29 +896,56 @@ function showScores() {
       state.scores[name] = (state.scores[name] || 0) + pts;
     });
   } else {
-  Object.entries(state.votes).forEach(([voter, voted]) => {
-    const author = Object.entries(state.answers).find(([n, a]) => a === voted);
-    if (author) state.scores[author[0]] = (state.scores[author[0]] || 0) + 500;
-  });
+    Object.entries(state.votes).forEach(([voter, voted]) => {
+      const author = Object.entries(state.answers).find(([n, a]) => a === voted);
+      if (author) state.scores[author[0]] = (state.scores[author[0]] || 0) + 500;
+    });
   }
   const isLast = state.currentRound >= state.totalRounds - 1;
   roomRoot().update({ phase: 'scores', scores: state.scores, isLastRound: isLast });
   const sorted = Object.entries(state.scores).sort((a, b) => b[1] - a[1]);
-  const max = sorted[0]?.[1] || 1;
-  const ranks = ['g1','g2','g3'];
-  const bars = ['linear-gradient(90deg,#FFD700,#ffaa00)','linear-gradient(90deg,#C0C0C0,#aaa)','linear-gradient(90deg,#CD7F32,#a05a20)','linear-gradient(90deg,var(--blue),var(--blue-bright))'];
-  document.getElementById('score-list').innerHTML = sorted.map(([name, pts], i) => {
+
+  function makeAv(name, size) {
     const p = state.players.find(pl => pl.name === name);
-    const av = p?.photo ? `<img src="${p.photo}" alt="${esc(name)}">` : `<span style="color:${p?.color||'#fff'}">${name[0]}</span>`;
-    return `<div class="score-row" style="animation-delay:${i*0.12}s">
-      <div class="sr-rank ${ranks[i]||''}">${i+1}</div>
-      <div class="sr-avatar" style="border-color:${p?.color||'var(--border-bright)'}">${av}</div>
-      <div class="sr-info"><div class="sr-name">${esc(name)}</div>
-        <div class="sr-bar-wrap"><div class="sr-bar" style="width:${Math.max(8,(pts/max)*100)}%;background:${bars[Math.min(i,3)]}"></div></div>
-      </div>
-      <div class="sr-pts">${pts}</div>
+    const s = size === 'lg' ? 'width:62px;height:62px;font-size:1.4rem;border:3px solid #fff' : 'width:36px;height:36px;font-size:0.9rem;border:2px solid rgba(255,255,255,0.25)';
+    const inner = p?.photo ? `<img src="${p.photo}" alt="${esc(name)}" style="width:100%;height:100%;object-fit:cover">` : `<span style="color:${p?.color||'#fff'}">${name[0]}</span>`;
+    return `<div style="${s};border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-weight:900;flex-shrink:0">${inner}</div>`;
+  }
+
+  // Build podium (order on screen: 2nd left, 1st centre, 3rd right)
+  const podiumOrder = [sorted[1], sorted[0], sorted[2]];
+  const podiumClass = ['p2','p1','p3'];
+  const podiumNum = ['2','1','3'];
+  const podiumColors = ['#c0c0c0','#FFD700','#cd7f32'];
+
+  const podiumHTML = `<div class="podium-scene">` +
+    podiumOrder.map((entry, idx) => {
+      if (!entry) return `<div class="podium-col" style="width:115px"></div>`;
+      const [name, pts] = entry;
+      const isFirst = podiumNum[idx] === '1';
+      return `<div class="podium-col">
+        ${isFirst ? `<div style="font-family:var(--font-d);font-size:1.1rem;margin-bottom:0.2rem">👑</div>` : ''}
+        ${makeAv(name, 'lg')}
+        <div class="podium-pname" style="color:${podiumColors[idx]};margin-top:0.4rem">${esc(name)}</div>
+        <div class="podium-top-pts">${pts} pts</div>
+        <div class="podium-block ${podiumClass[idx]}"><div class="podium-num">${podiumNum[idx]}</div></div>
+      </div>`;
+    }).join('') +
+  `</div>`;
+
+  document.getElementById('podium-wrap').innerHTML = podiumHTML;
+
+  // Remaining players (4th place onward)
+  const rest = sorted.slice(3);
+  document.getElementById('score-list').innerHTML = rest.map(([name, pts], i) => {
+    return `<div class="podium-rest-row">
+      <div class="pr-rank">${i + 4}</div>
+      ${makeAv(name, 'sm')}
+      <div class="pr-name">${esc(name)}</div>
+      <div class="pr-pts">${pts}</div>
     </div>`;
   }).join('');
+
   document.getElementById('next-round-btn').style.display = isLast ? 'none' : '';
   show('host-scores');
 }
