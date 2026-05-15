@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>HuizeJules</title>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
 :root {
   --bg: #07071a;
@@ -314,6 +316,7 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
         <div class="hg-sub" id="host-waiting">
           <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
           <span id="answers-received">0</span>/<span id="answers-total">0</span> antwoorden ontvangen
+          &nbsp;·&nbsp;<button class="btn btn-ghost btn-sm" onclick="forceVotePhase()" style="padding:0.3rem 0.8rem;font-size:0.7rem">Ga door →</button>
         </div>
       </div>
       <div id="host-vote-section" style="display:none">
@@ -432,6 +435,21 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 </div>
 
 <script>
+// ⚠️ STAP 1: Vervang onderstaande config met die van jouw Firebase project
+// Ga naar console.firebase.google.com → jouw project → Project settings → jouw web app
+const firebaseConfig = {
+  apiKey: "AIzaSyCKoQbFyu_85jZlWUpH6_vlkAq0WRtlmaI",
+  authDomain: "huizejules.firebaseapp.com",
+  databaseURL: "https://huizejules-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "huizejules",
+  storageBucket: "huizejules.firebasestorage.app",
+  messagingSenderId: "76654130876",
+  appId: "1:76654130876:web:b374f62fbdccf2e6d8c2b9"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
 const PALETTE = ['#e8193c','#1560f5','#9c27b0','#ff6d00','#00897b','#c62828','#283593','#558b2f','#f57f17','#00838f'];
 const QUESTIONS = [
   "Als dieren konden stemmen, welk dier zou altijd verliezen en waarom?",
@@ -451,70 +469,47 @@ const QUESTIONS = [
 let state = {
   mode: null, roomCode: '',
   players: [], myName: '', myDetail: '', myColor: '', myPhoto: null,
-  currentRound: 0, totalRounds: 2,
+  currentRound: 0, totalRounds: 10, answerTime: 60,
   answers: {}, votes: {}, scores: {}, questions: [],
   myAnswered: false, myVote: null,
+  votePhaseShown: false, scoresShown: false,
 };
 
-const ch = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('partygame_v3') : null;
-if (ch) ch.onmessage = e => handleMessage(e.data);
-function send(msg) { if (ch) ch.postMessage(msg); }
+let activeListeners = [];
 
-function handleMessage(msg) {
-  if (msg.type === 'player-join' && state.mode === 'host') {
-    if (!state.players.find(p => p.name === msg.name)) {
-      state.players.push({ name: msg.name, detail: msg.detail, color: msg.color, photo: msg.photo });
-      state.scores[msg.name] = 0;
-      renderLobby();
-      toast(`${msg.name} heeft meegedaan! 🎉`);
-    }
-  }
-  if (msg.type === 'game-start' && state.mode === 'player') {
-    state.questions = msg.questions;
-    state.totalRounds = msg.totalRounds;
-    showPlayerAnswer();
-  }
-  if (msg.type === 'player-answer' && state.mode === 'host') {
-    state.answers[msg.name] = msg.answer;
-    document.getElementById('answers-received').textContent = Object.keys(state.answers).length;
-    if (Object.keys(state.answers).length >= state.players.length) showVotePhase();
-  }
-  if (msg.type === 'player-vote' && state.mode === 'host') {
-    state.votes[msg.name] = msg.vote;
-    const card = document.querySelector(`[data-akey="${CSS.escape(msg.vote.slice(0,30))}"]`);
-    if (card) {
-      let bub = card.querySelector('.vote-bubble');
-      if (!bub) { bub = document.createElement('div'); bub.className = 'vote-bubble'; bub.textContent = '0'; card.appendChild(bub); }
-      bub.textContent = parseInt(bub.textContent) + 1;
-      card.classList.add('has-votes');
-    }
-    if (Object.keys(state.votes).length >= state.players.length) setTimeout(showScores, 1500);
-  }
-  if (msg.type === 'show-vote' && state.mode === 'player') showPlayerVote(msg.question, msg.answers);
-  if (msg.type === 'show-scores' && state.mode === 'player') {
-    show('player-done');
-    document.getElementById('done-sub').textContent = msg.isLast
-      ? 'Het spel is voorbij! Bekijk de eindstand op de TV.' : 'Volgende ronde komt eraan…';
-  }
-}
+function dbRef(path) { return db.ref(`rooms/${state.roomCode}/${path}`); }
+function roomRoot() { return db.ref(`rooms/${state.roomCode}`); }
+function addListener(ref, event, fn) { ref.on(event, fn); activeListeners.push({ ref, event, fn }); }
+function clearListeners() { activeListeners.forEach(({ ref, event, fn }) => ref.off(event, fn)); activeListeners = []; }
 
 function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
 
+// ===== HOST =====
 function showHostLobby() {
   state.mode = 'host'; state.roomCode = rndCode();
   state.players = []; state.scores = {};
+  clearListeners();
+  roomRoot().set({ phase: 'lobby', createdAt: Date.now() });
   document.getElementById('room-code-display').textContent = state.roomCode;
   document.getElementById('player-count').textContent = '0';
-  document.getElementById('player-grid').innerHTML = `<div style="border:2px dashed var(--border);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:140px;color:var(--muted);font-size:0.78rem;gap:0.5rem"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Wachten…</div>`;
+  document.getElementById('player-grid').innerHTML = `<div style="border:2px dashed var(--border);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:140px;color:var(--muted);font-size:0.78rem;gap:0.5rem"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Wachten op spelers…</div>`;
   document.getElementById('start-btn').disabled = true;
   document.getElementById('start-btn').textContent = 'Wacht op spelers…';
   show('host-lobby');
+  addListener(dbRef('players'), 'value', snap => {
+    const data = snap.val() || {};
+    state.players = Object.values(data);
+    state.players.forEach(p => { if (!state.scores[p.name]) state.scores[p.name] = 0; });
+    renderLobby();
+  });
 }
 
 function showJoin() { state.mode = 'player'; show('join'); }
 
 function renderLobby() {
-  document.getElementById('player-grid').innerHTML = state.players.map((p,i) => `
+  document.getElementById('player-grid').innerHTML = state.players.length === 0
+    ? `<div style="border:2px dashed var(--border);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:140px;color:var(--muted);font-size:0.78rem;gap:0.5rem"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Wachten op spelers…</div>`
+    : state.players.map((p, i) => `
     <div class="player-card" style="animation-delay:${i*0.07}s;border-color:${p.color}55">
       <div class="pc-avatar" style="border-color:${p.color};box-shadow:0 0 18px ${p.color}44">
         ${p.photo ? `<img src="${p.photo}" alt="${esc(p.name)}">` : `<span style="color:${p.color}">${p.name[0].toUpperCase()}</span>`}
@@ -527,7 +522,7 @@ function renderLobby() {
   document.getElementById('lobby-count-label').textContent = n === 0 ? 'Wachten op spelers…' : `${n} speler${n>1?'s':''} in de lobby`;
   const btn = document.getElementById('start-btn');
   if (n >= 2) { btn.disabled = false; btn.textContent = `Start het spel! (${n} spelers)`; }
-  else { btn.disabled = true; btn.textContent = n===1 ? 'Nog minimaal 1 speler nodig…' : 'Wacht op spelers…'; }
+  else { btn.disabled = true; btn.textContent = n === 1 ? 'Nog minimaal 1 speler nodig…' : 'Wacht op spelers…'; }
 }
 
 function handleAvatarUpload(e) {
@@ -544,52 +539,88 @@ function handleAvatarUpload(e) {
 const FAKE_NAMES = ['Anna','Boris','Chloe','Daan','Eva','Finn','Gaby','Hank','Iris','Jaap','Kira','Ludo'];
 const FAKE_DETAILS = ['Ik heb nog nooit een film helemaal uitgekeken','Mijn kat heet Kanye','Ik heb 3 koelkasten','Ik ben hier alleen voor het eten','Ik slaap altijd in de bioscoop'];
 function addFakePlayer() {
-  const avail = FAKE_NAMES.filter(n => !state.players.find(p=>p.name===n));
+  const avail = FAKE_NAMES.filter(n => !state.players.find(p => p.name === n));
   if (!avail.length) { toast('Max demo-spelers bereikt'); return; }
-  const name = avail[Math.floor(Math.random()*avail.length)];
-  const detail = FAKE_DETAILS[Math.floor(Math.random()*FAKE_DETAILS.length)];
+  const name = avail[Math.floor(Math.random() * avail.length)];
+  const detail = FAKE_DETAILS[Math.floor(Math.random() * FAKE_DETAILS.length)];
   const color = PALETTE[state.players.length % PALETTE.length];
-  state.players.push({name,detail,color,photo:null});
-  state.scores[name] = 0;
-  renderLobby();
-  toast(`${name} heeft meegedaan!`);
+  dbRef(`players/${name}`).set({ name, detail, color, photo: null });
+  toast(`${name} toegevoegd!`);
 }
 
+// ===== SPELER JOIN =====
 function joinGame() {
   const code = document.getElementById('join-code').value.trim().toUpperCase();
   const name = document.getElementById('join-name').value.trim();
   const detail = document.getElementById('join-detail').value.trim();
   if (code.length !== 4) { toast('Voer een geldige 4-letter room code in'); return; }
   if (!name) { toast('Kies een naam'); return; }
-  state.myName = name; state.myDetail = detail; state.myColor = PALETTE[Math.floor(Math.random()*PALETTE.length)]; state.roomCode = code;
-  const pw = document.getElementById('pw-avatar');
-  if (state.myPhoto) {
-    pw.innerHTML = `<img src="${state.myPhoto}" alt="avatar">`;
-    pw.style.cssText = `border:3px solid ${state.myColor};box-shadow:0 0 30px ${state.myColor}55`;
-  } else {
-    pw.textContent = name[0].toUpperCase();
-    pw.style.cssText = `background:${state.myColor}22;color:${state.myColor};border:3px solid ${state.myColor};box-shadow:0 0 30px ${state.myColor}55`;
-  }
-  document.getElementById('pw-name').textContent = name;
-  const det = document.getElementById('pw-detail');
-  if (detail) { det.textContent = detail; det.style.display = ''; } else det.style.display = 'none';
-  document.getElementById('pw-code').textContent = code;
-  const payload = {type:'player-join',name,detail,color:state.myColor,photo:state.myPhoto};
-  send(payload);
-  if (!ch || state.mode==='host') handleMessage(payload);
-  show('player-waiting');
+
+  db.ref(`rooms/${code}`).once('value').then(snap => {
+    if (!snap.exists()) { toast('Room niet gevonden. Controleer de code.'); return; }
+
+    state.myName = name; state.myDetail = detail;
+    state.myColor = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+    state.roomCode = code;
+    clearListeners();
+
+    db.ref(`rooms/${code}/players/${name}`).set({ name, detail, color: state.myColor, photo: state.myPhoto });
+
+    const pw = document.getElementById('pw-avatar');
+    if (state.myPhoto) {
+      pw.innerHTML = `<img src="${state.myPhoto}" alt="avatar">`;
+      pw.style.cssText = `border:3px solid ${state.myColor};box-shadow:0 0 30px ${state.myColor}55`;
+    } else {
+      pw.textContent = name[0].toUpperCase();
+      pw.style.cssText = `background:${state.myColor}22;color:${state.myColor};border:3px solid ${state.myColor};box-shadow:0 0 30px ${state.myColor}55`;
+    }
+    document.getElementById('pw-name').textContent = name;
+    const det = document.getElementById('pw-detail');
+    if (detail) { det.textContent = detail; det.style.display = ''; } else det.style.display = 'none';
+    document.getElementById('pw-code').textContent = code;
+    show('player-waiting');
+
+    let lastPhase = null; let lastRound = -1;
+    addListener(db.ref(`rooms/${code}`), 'value', snap => {
+      const data = snap.val(); if (!data) return;
+      const phase = data.phase; const round = data.currentRound || 0;
+
+      if (phase === 'answering' && (phase !== lastPhase || round !== lastRound)) {
+        lastPhase = phase; lastRound = round;
+        state.myAnswered = false; state.myVote = null;
+        state.questions = data.questions; state.totalRounds = data.totalRounds; state.currentRound = round;
+        showPlayerAnswer(data.currentQuestion, data.answerTime);
+      } else if (phase === 'voting' && (phase !== lastPhase || round !== lastRound)) {
+        lastPhase = phase; lastRound = round;
+        showPlayerVote(data.currentQuestion, data.voteAnswers);
+      } else if (phase === 'scores' && phase !== lastPhase) {
+        lastPhase = phase;
+        show('player-done');
+        document.getElementById('done-sub').textContent = data.isLastRound
+          ? 'Het spel is voorbij! Bekijk de eindstand op de TV.' : 'Volgende ronde komt eraan…';
+      }
+    });
+  });
 }
 
+// ===== HOST SPEL =====
 function startGame() {
   state.totalRounds = parseInt(document.getElementById('rounds-select').value);
+  state.answerTime = parseInt(document.getElementById('time-select').value);
   state.currentRound = 0;
   state.questions = shuffle([...QUESTIONS]).slice(0, state.totalRounds);
-  send({type:'game-start',questions:state.questions,totalRounds:state.totalRounds});
+  roomRoot().update({
+    phase: 'answering', currentRound: 0, totalRounds: state.totalRounds,
+    answerTime: state.answerTime, questions: state.questions,
+    currentQuestion: state.questions[0], answers: null, votes: null, voteAnswers: null, isLastRound: false,
+  });
   startRound();
 }
 
 function startRound() {
   state.answers = {}; state.votes = {}; state.myAnswered = false; state.myVote = null;
+  state.votePhaseShown = false; state.scoresShown = false;
+  clearListeners();
   const q = state.questions[state.currentRound];
   document.getElementById('round-label').textContent = `Ronde ${state.currentRound+1} van ${state.totalRounds}`;
   document.getElementById('host-question-text').textContent = q;
@@ -598,40 +629,73 @@ function startRound() {
   document.getElementById('host-waiting').style.display = 'flex';
   document.getElementById('host-vote-section').style.display = 'none';
   show('host-game');
+
+  addListener(dbRef('answers'), 'value', snap => {
+    if (state.votePhaseShown) return;
+    const data = snap.val() || {};
+    state.answers = data;
+    const count = Object.keys(data).length;
+    document.getElementById('answers-received').textContent = count;
+    if (count >= state.players.length && state.players.length > 0) {
+      state.votePhaseShown = true;
+      showVotePhase();
+    }
+  });
+}
+
+function forceVotePhase() {
+  if (state.votePhaseShown) return;
+  state.votePhaseShown = true;
+  showVotePhase();
 }
 
 function showVotePhase() {
   document.getElementById('host-waiting').style.display = 'none';
   document.getElementById('host-vote-section').style.display = 'block';
   const entries = Object.entries(state.answers);
-  document.getElementById('host-answers-grid').innerHTML = entries.map(([name,answer],i) => `
+  document.getElementById('host-answers-grid').innerHTML = entries.map(([name, answer], i) => `
     <div class="answer-card" data-akey="${esc(answer.slice(0,30))}">
       <div class="answer-ltr">Antwoord ${String.fromCharCode(65+i)}</div>
       <div class="answer-txt">"${esc(answer)}"</div>
     </div>`).join('');
-  const q = state.questions[state.currentRound];
-  send({type:'show-vote',question:q,answers:entries.map(([n,a])=>({name:n,answer:a}))});
+  const voteAnswers = entries.map(([n, a]) => ({ name: n, answer: a }));
+  roomRoot().update({ phase: 'voting', voteAnswers, currentQuestion: state.questions[state.currentRound], votes: null });
+
+  addListener(dbRef('votes'), 'value', snap => {
+    if (state.scoresShown) return;
+    const data = snap.val() || {};
+    document.querySelectorAll('.answer-card').forEach(card => { const b = card.querySelector('.vote-bubble'); if (b) b.remove(); card.classList.remove('has-votes'); });
+    const counts = {};
+    Object.values(data).forEach(v => { counts[v] = (counts[v] || 0) + 1; });
+    Object.entries(counts).forEach(([answer, count]) => {
+      const card = document.querySelector(`[data-akey="${CSS.escape(answer.slice(0,30))}"]`);
+      if (card) { const bub = document.createElement('div'); bub.className = 'vote-bubble'; bub.textContent = count; card.appendChild(bub); card.classList.add('has-votes'); }
+    });
+    if (Object.keys(data).length >= state.players.length && state.players.length > 0) {
+      state.scoresShown = true; state.votes = data;
+      setTimeout(showScores, 1500);
+    }
+  });
 }
 
 function showScores() {
-  Object.entries(state.votes).forEach(([voter,voted]) => {
-    const author = Object.entries(state.answers).find(([n,a]) => a===voted);
-    if (author) state.scores[author[0]] = (state.scores[author[0]]||0) + 500;
+  Object.entries(state.votes).forEach(([voter, voted]) => {
+    const author = Object.entries(state.answers).find(([n, a]) => a === voted);
+    if (author) state.scores[author[0]] = (state.scores[author[0]] || 0) + 500;
   });
-  const isLast = state.currentRound >= state.totalRounds-1;
-  send({type:'show-scores',isLast});
-  const sorted = Object.entries(state.scores).sort((a,b)=>b[1]-a[1]);
-  const max = sorted[0]?.[1]||1;
+  const isLast = state.currentRound >= state.totalRounds - 1;
+  roomRoot().update({ phase: 'scores', scores: state.scores, isLastRound: isLast });
+  const sorted = Object.entries(state.scores).sort((a, b) => b[1] - a[1]);
+  const max = sorted[0]?.[1] || 1;
   const ranks = ['g1','g2','g3'];
   const bars = ['linear-gradient(90deg,#FFD700,#ffaa00)','linear-gradient(90deg,#C0C0C0,#aaa)','linear-gradient(90deg,#CD7F32,#a05a20)','linear-gradient(90deg,var(--blue),var(--blue-bright))'];
-  document.getElementById('score-list').innerHTML = sorted.map(([name,pts],i) => {
-    const p = state.players.find(pl=>pl.name===name);
+  document.getElementById('score-list').innerHTML = sorted.map(([name, pts], i) => {
+    const p = state.players.find(pl => pl.name === name);
     const av = p?.photo ? `<img src="${p.photo}" alt="${esc(name)}">` : `<span style="color:${p?.color||'#fff'}">${name[0]}</span>`;
     return `<div class="score-row" style="animation-delay:${i*0.12}s">
       <div class="sr-rank ${ranks[i]||''}">${i+1}</div>
       <div class="sr-avatar" style="border-color:${p?.color||'var(--border-bright)'}">${av}</div>
-      <div class="sr-info">
-        <div class="sr-name">${esc(name)}</div>
+      <div class="sr-info"><div class="sr-name">${esc(name)}</div>
         <div class="sr-bar-wrap"><div class="sr-bar" style="width:${Math.max(8,(pts/max)*100)}%;background:${bars[Math.min(i,3)]}"></div></div>
       </div>
       <div class="sr-pts">${pts}</div>
@@ -641,21 +705,32 @@ function showScores() {
   show('host-scores');
 }
 
-function nextRound() { state.currentRound++; if (state.currentRound < state.totalRounds) startRound(); else endGame(); }
-function endGame() { state.mode = null; show('landing'); }
+function nextRound() {
+  state.currentRound++;
+  if (state.currentRound < state.totalRounds) {
+    roomRoot().update({
+      phase: 'answering', currentRound: state.currentRound,
+      currentQuestion: state.questions[state.currentRound], answerTime: state.answerTime,
+      answers: null, votes: null, voteAnswers: null,
+      isLastRound: state.currentRound >= state.totalRounds - 1,
+    });
+    startRound();
+  } else { endGame(); }
+}
 
-function showPlayerAnswer() {
-  document.getElementById('p-question-text').textContent = state.questions[state.currentRound];
+function endGame() { clearListeners(); roomRoot().update({ phase: 'done' }); state.mode = null; show('landing'); }
+
+// ===== SPELER ANTWOORD =====
+function showPlayerAnswer(question, answerTime) {
+  document.getElementById('p-question-text').textContent = question;
   document.getElementById('player-answer-text').value = '';
-  state.myAnswered = false;
   show('player-answer');
-  startTimer();
+  startTimer(answerTime || 60);
 }
 
 let timerInterval;
-function startTimer() {
+function startTimer(secs) {
   clearInterval(timerInterval);
-  const secs = parseInt(document.getElementById('time-select')?.value||60);
   let rem = secs;
   const el = document.getElementById('p-timer-val');
   const timerEl = document.getElementById('p-timer');
@@ -663,29 +738,35 @@ function startTimer() {
   timerInterval = setInterval(() => {
     rem--;
     el.textContent = rem;
-    timerEl.classList.toggle('urgent', rem<=10);
-    if (rem<=0) { clearInterval(timerInterval); autoSubmit(); }
+    timerEl.classList.toggle('urgent', rem <= 10);
+    if (rem <= 0) { clearInterval(timerInterval); autoSubmit(); }
   }, 1000);
 }
 
-function autoSubmit() { if (!state.myAnswered) { if (!document.getElementById('player-answer-text').value.trim()) document.getElementById('player-answer-text').value='(geen antwoord)'; submitAnswer(); } }
+function autoSubmit() { if (!state.myAnswered) { if (!document.getElementById('player-answer-text').value.trim()) document.getElementById('player-answer-text').value = '(geen antwoord)'; submitAnswer(); } }
 
 function submitAnswer() {
   if (state.myAnswered) return;
   clearInterval(timerInterval); state.myAnswered = true;
-  const answer = document.getElementById('player-answer-text').value.trim()||'(geen antwoord)';
-  const payload = {type:'player-answer',name:state.myName,answer};
-  send(payload); if (!ch) handleMessage(payload);
+  const answer = document.getElementById('player-answer-text').value.trim() || '(geen antwoord)';
+  db.ref(`rooms/${state.roomCode}/answers/${state.myName}`).set(answer);
   show('player-done');
   document.getElementById('done-sub').textContent = 'Wacht op de andere spelers…';
 }
 
+// ===== SPELER STEM =====
 function showPlayerVote(question, answers) {
+  if (!answers) return;
   document.getElementById('vote-question-text').textContent = question;
   state.myVote = null;
-  const myAnswer = state.answers?.[state.myName];
-  const opts = answers.filter(a => a.answer !== myAnswer);
-  document.getElementById('vote-options').innerHTML = opts.map((a,i) => `
+  const opts = answers.filter(a => a.answer !== state.answers?.[state.myName]);
+  if (opts.length === 0) {
+    db.ref(`rooms/${state.roomCode}/votes/${state.myName}`).set('(geen stem)');
+    show('player-done');
+    document.getElementById('done-sub').textContent = 'Wacht op de andere spelers…';
+    return;
+  }
+  document.getElementById('vote-options').innerHTML = opts.map((a, i) => `
     <div class="vote-card" onclick="selectVote(${i},'${esc(a.answer).replace(/'/g,"&#39;")}')">
       <div class="vc-letter">${String.fromCharCode(65+i)}</div>
       <div class="vc-text">"${esc(a.answer)}"</div>
@@ -696,14 +777,13 @@ function showPlayerVote(question, answers) {
 
 function selectVote(idx, answer) {
   state.myVote = answer;
-  document.querySelectorAll('.vote-card').forEach((el,i) => el.classList.toggle('selected',i===idx));
+  document.querySelectorAll('.vote-card').forEach((el, i) => el.classList.toggle('selected', i === idx));
   document.getElementById('vote-submit-btn').disabled = false;
 }
 
 function submitVote() {
   if (!state.myVote) return;
-  const payload = {type:'player-vote',name:state.myName,vote:state.myVote};
-  send(payload); if (!ch) handleMessage(payload);
+  db.ref(`rooms/${state.roomCode}/votes/${state.myName}`).set(state.myVote);
   show('player-done');
   document.getElementById('done-sub').textContent = 'Stem uitgebracht! Wacht op de scores op de TV…';
 }
