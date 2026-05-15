@@ -417,6 +417,16 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
   </div>
 </div>
 
+<!-- RONDJE HALEN -->
+<div class="screen" id="host-rondje">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:3rem">
+    <div style="font-size:5rem;margin-bottom:1.5rem">🍺</div>
+    <div id="rondje-naam" style="font-family:var(--font-d);font-size:3rem;color:var(--red);margin-bottom:0.8rem"></div>
+    <div style="font-family:var(--font-d);font-size:1.8rem;color:var(--text);margin-bottom:2.5rem">moet een rondje halen!<br><span style="color:var(--muted);font-size:1.2rem">Gierige krent!</span></div>
+    <button class="btn btn-red btn-lg" onclick="showScores()">Bekijk scores →</button>
+  </div>
+</div>
+
 <!-- HOST SCORES -->
 <div class="screen" id="host-scores">
   <div style="padding:2rem 1.5rem;width:100%;display:flex;flex-direction:column;align-items:center">
@@ -580,7 +590,7 @@ function roomRoot() { return db.ref(`rooms/${state.roomCode}`); }
 function addListener(ref, event, fn) { ref.on(event, fn); activeListeners.push({ ref, event, fn }); }
 function clearListeners() { activeListeners.forEach(({ ref, event, fn }) => ref.off(event, fn)); activeListeners = []; }
 
-const SCHERMEN_MET_BG = new Set(['landing','game-select','join','player-waiting','player-answer','player-vote','player-done','host-lobby','host-game','spectator']);
+const SCHERMEN_MET_BG = new Set(['landing','game-select','join','player-waiting','player-answer','player-vote','player-done','host-lobby','host-game','host-rondje','spectator']);
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -721,7 +731,13 @@ function startGame() {
   state.answerTime = parseInt(document.getElementById('time-select').value);
   state.currentRound = 0;
   const pool = state.gameMode === 'wie' ? QUESTIONS_WIE : QUESTIONS;
-  state.questions = shuffle([...pool]).slice(0, state.totalRounds);
+  const namen = state.players.map(p => p.name);
+  state.questions = shuffle([...pool]).slice(0, state.totalRounds).map(q => {
+    if (typeof q === 'string' && q.includes('{speler}') && namen.length > 0) {
+      return q.replace('{speler}', namen[Math.floor(Math.random() * namen.length)]);
+    }
+    return q;
+  });
   roomRoot().update({
     phase: 'answering', currentRound: 0, totalRounds: state.totalRounds, gameMode: state.gameMode,
     answerTime: state.answerTime, questions: state.questions,
@@ -880,6 +896,17 @@ function showWieResults() {
     </div>`;
   }).join('');
   roomRoot().update({ phase: 'wie-results' });
+
+  const vraagTekst = getQuestionText(state.questions[state.currentRound]) || '';
+  if (vraagTekst.toLowerCase().includes('minste rondjes')) {
+    const winnaar = sorted[0]?.[0];
+    if (winnaar) {
+      setTimeout(() => {
+        document.getElementById('rondje-naam').textContent = winnaar;
+        show('host-rondje');
+      }, 3000);
+    }
+  }
 }
 
 function showScores() {
