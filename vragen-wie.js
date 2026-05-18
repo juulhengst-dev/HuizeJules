@@ -41,7 +41,7 @@ const QUESTIONS_WIE = [
   "Wie zou de beste wingman zijn?",
   "Wie zou de slechtste wingman zijn?",
   "Wie eindigt op een avond uit met een matige 2 in bed?",
-  "Wie heeft het snelst hoofd voor 5 euro?",
+  "Wie geeft het snelst hoofd voor 5 euro?",
   "Wie heeft de meeste green flags?",
   "Wie is het goorst op een avond uit?",
   "Wie heeft de meeste sex appeal?",
