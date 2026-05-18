@@ -162,6 +162,11 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 .answers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 2rem; }
 .answer-card { background: var(--surface); border: 2px solid var(--border-bright); border-radius: 14px; padding: 1.5rem; position: relative; transition: all 0.2s; }
 .answer-card.has-votes { border-color: var(--blue); box-shadow: 0 0 20px var(--blue-glow); }
+.answer-card.top-voted { background: var(--red); border-color: var(--red); box-shadow: 0 0 40px var(--red-glow); animation: topVotedPop 0.45s cubic-bezier(.17,.67,.3,1.4) both; }
+.answer-card.top-voted .answer-ltr { color: rgba(255,255,255,0.6); }
+.answer-card.top-voted .answer-txt { color: #fff; font-weight: 600; }
+.answer-card.top-voted .vote-bubble { background: rgba(0,0,0,0.25); color: #fff; font-size: 1rem; padding: 0.3rem 0.75rem; }
+@keyframes topVotedPop { from{transform:scale(0.92);opacity:0.4} to{transform:scale(1);opacity:1} }
 .answer-ltr { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
 .answer-txt { font-size: 1rem; font-weight: 500; line-height: 1.45; }
 .vote-bubble { position: absolute; top: 1rem; right: 1rem; background: var(--blue); color: #fff; font-family: var(--font-d); font-weight: 700; font-size: 0.78rem; padding: 0.2rem 0.6rem; border-radius: 99px; }
@@ -451,9 +456,12 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
         </div>
       </div>
       <div id="host-vote-section" style="display:none">
-        <div style="text-align:center;font-size:0.7rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:1.5rem">Spelers stemmen op het beste antwoord</div>
+        <div style="text-align:center;font-size:0.7rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:1.5rem">
+          <span id="vote-status-text">Wachten op stemmen…</span>
+          <span id="vote-progress" style="color:var(--blue-bright);margin-left:0.5rem"></span>
+        </div>
         <div class="answers-grid" id="host-answers-grid"></div>
-        <div style="text-align:center"><button class="btn btn-red" onclick="showScores()">Bekijk scores →</button></div>
+        <div style="text-align:center;margin-top:1rem"><button class="btn btn-ghost btn-sm" onclick="showScores()">Overslaan →</button></div>
       </div>
     </div>
   </div>
@@ -577,7 +585,9 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
     <div class="done-sub" id="done-sub">Wacht op de andere spelers…</div>
   </div>
   <div id="pd-scores" style="display:none;flex-direction:column;align-items:center;padding:1.5rem 1rem;width:100%">
-    <div style="font-family:var(--font-d);font-size:1.4rem;margin-bottom:1rem"><span style="color:var(--red)">SCORE</span><span style="color:var(--blue-bright)">BORD</span></div>
+    <div id="pd-my-delta" style="display:none;font-family:var(--font-d);font-size:3rem;font-weight:900;color:#00e676;text-shadow:0 0 40px rgba(0,230,118,0.45);margin-bottom:0.2rem"></div>
+    <div id="pd-my-delta-label" style="display:none;font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:#00e676;opacity:0.7;margin-bottom:1rem">punten gewonnen</div>
+    <div style="font-family:var(--font-d);font-size:1.4rem;margin-bottom:0.9rem"><span style="color:var(--red)">SCORE</span><span style="color:var(--blue-bright)">BORD</span></div>
     <div class="player-scores-list" id="player-scores-list"></div>
     <div class="done-sub" id="done-msg" style="margin-top:1.1rem"></div>
   </div>
@@ -775,6 +785,21 @@ function joinGame() {
         const scores = data.scores || {};
         const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
         const rankColors = ['#FFD700','#C0C0C0','#CD7F32'];
+        // Prominente delta linksboven
+        const myPts = scores[state.myName] || 0;
+        const myPrev = state.prevScores[state.myName] || 0;
+        const myDelta = myPts - myPrev;
+        const deltaEl = document.getElementById('pd-my-delta');
+        const deltaLabel = document.getElementById('pd-my-delta-label');
+        if (myDelta > 0) {
+          deltaEl.textContent = '+' + myDelta;
+          deltaEl.style.display = 'block';
+          deltaLabel.style.display = 'block';
+        } else {
+          deltaEl.style.display = 'none';
+          deltaLabel.style.display = 'none';
+        }
+        // Scorelijst
         document.getElementById('player-scores-list').innerHTML = sorted.map(([name, pts], i) => {
           const isMe = name === state.myName;
           const delta = state.prevScores[name] !== undefined ? pts - state.prevScores[name] : null;
@@ -785,6 +810,7 @@ function joinGame() {
             ${delta !== null && delta > 0 ? `<div class="psr-delta">+${delta}</div>` : ''}
           </div>`;
         }).join('');
+        state.prevScores = { ...scores };
         document.getElementById('done-msg').textContent = data.isLastRound
           ? 'Het spel is voorbij! Bekijk de eindstand op de TV.' : 'Volgende ronde komt eraan…';
         document.getElementById('pd-waiting').style.display = 'none';
@@ -936,18 +962,38 @@ function showVotePhase() {
   addListener(dbRef('votes'), 'value', snap => {
     if (state.scoresShown) return;
     const data = snap.val() || {};
-    document.querySelectorAll('.answer-card').forEach(card => { const b = card.querySelector('.vote-bubble'); if (b) b.remove(); card.classList.remove('has-votes'); });
-    const counts = {};
-    Object.values(data).forEach(v => { counts[v] = (counts[v] || 0) + 1; });
-    Object.entries(counts).forEach(([answer, count]) => {
-      const card = document.querySelector(`[data-akey="${CSS.escape(answer.slice(0,30))}"]`);
-      if (card) { const bub = document.createElement('div'); bub.className = 'vote-bubble'; bub.textContent = count; card.appendChild(bub); card.classList.add('has-votes'); }
-    });
-    if (Object.keys(data).length >= state.players.length && state.players.length > 0) {
+    const voteCount = Object.keys(data).length;
+    document.getElementById('vote-progress').textContent = `${voteCount}/${state.players.length}`;
+    if (voteCount >= state.players.length && state.players.length > 0) {
       state.scoresShown = true; state.votes = data;
-      setTimeout(showScores, 1500);
+      revealVoteResults(data);
+      setTimeout(showScores, 4000);
     }
   });
+}
+
+function revealVoteResults(votes) {
+  const counts = {};
+  Object.values(votes).forEach(v => { counts[v] = (counts[v] || 0) + 1; });
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const n = state.players.length;
+  const topN = n >= 4 ? 3 : n >= 3 ? 2 : 1;
+  const topKeys = new Set(sorted.slice(0, topN).map(([a]) => a.slice(0, 30)));
+  document.querySelectorAll('.answer-card').forEach(card => {
+    const akey = card.dataset.akey;
+    const fullAnswer = Object.keys(counts).find(a => a.slice(0, 30) === akey);
+    if (fullAnswer) {
+      const count = counts[fullAnswer];
+      const bub = document.createElement('div');
+      bub.className = 'vote-bubble';
+      bub.textContent = count + 'x';
+      card.appendChild(bub);
+      card.classList.add('has-votes');
+      if (topKeys.has(akey)) card.classList.add('top-voted');
+    }
+  });
+  document.getElementById('vote-status-text').textContent = 'Alle stemmen binnen!';
+  document.getElementById('vote-progress').textContent = '';
 }
 
 function showWieResults() {
