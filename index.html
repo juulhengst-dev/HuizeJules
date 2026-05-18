@@ -829,9 +829,12 @@ function startGame() {
   const pool = state.gameMode === 'wie' ? QUESTIONS_WIE : QUESTIONS;
   const namen = state.players.map(p => p.name);
   state.questions = shuffle([...pool]).slice(0, state.totalRounds).map(q => {
-    if (typeof q === 'string' && q.includes('{speler}') && namen.length > 0) {
-      return q.replace('{speler}', namen[Math.floor(Math.random() * namen.length)]);
-    }
+    if (!namen.length) return q;
+    const naam = namen[Math.floor(Math.random() * namen.length)];
+    if (typeof q === 'string' && q.includes('{speler}'))
+      return q.replace(/\{speler\}/g, naam);
+    if (typeof q === 'object' && q && q.tekst && q.tekst.includes('{speler}'))
+      return { ...q, tekst: q.tekst.replace(/\{speler\}/g, naam) };
     return q;
   });
   roomRoot().update({
