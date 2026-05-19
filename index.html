@@ -254,6 +254,8 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 .gs-card.bedrieger:hover { border-color: #ff6b35; box-shadow: 0 0 35px rgba(255,107,53,0.4); }
 
 /* ===== BEDRIEGER ===== */
+@keyframes bdBalloon { 0%,100%{transform:scale(1)} 50%{transform:scale(1.07)} }
+.bd-bubble { animation: bdBalloon var(--bd-dur,3s) ease-in-out infinite; animation-delay: var(--bd-del,0s); }
 #bedrieger-player-theme { background: #000; }
 #bedrieger-host-reveal { background: #000; }
 #bedrieger-player-vote { padding: 1.2rem; gap: 1rem; justify-content: center; }
@@ -623,12 +625,9 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 
 <!-- BEDRIEGER HOST PLAY -->
 <div class="screen" id="bedrieger-host-play">
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:3rem;text-align:center">
-    <div style="background:var(--surface);border:1px solid var(--border-bright);border-radius:20px;padding:2rem 3rem;margin-bottom:2.5rem;max-width:500px;width:100%">
-      <div style="font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem">Thema</div>
-      <div id="bhp-theme" style="font-family:var(--font-d);font-size:2rem;color:var(--text)"></div>
-    </div>
-    <div style="color:var(--muted);font-size:0.88rem;margin-bottom:2.5rem;max-width:420px;line-height:1.6">Spelers nemen beurten om een woord te noemen.<br>Druk de knop als iedereen aan de beurt is geweest.</div>
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;text-align:center">
+    <div id="bhp-player-grid" style="display:flex;flex-wrap:wrap;justify-content:center;gap:1.4rem;margin-bottom:2.5rem;max-width:680px"></div>
+    <div style="color:var(--muted);font-size:0.88rem;margin-bottom:2rem;max-width:420px;line-height:1.6">Spelers nemen beurten om een woord te noemen.<br>Druk de knop als iedereen aan de beurt is geweest.</div>
     <button class="btn btn-red btn-lg" id="bhp-start-vote-btn" onclick="startBedriegersVote()">Start stemmen 🗳️</button>
     <div id="bhp-vote-status" style="margin-top:2rem;color:var(--muted);font-size:0.88rem;display:none">
       <span id="bhp-vote-count">0</span>/<span id="bhp-vote-total">0</span> stemmen ontvangen…
@@ -1510,8 +1509,18 @@ function startBedriegerGame() {
   if (state.players.length < 4) { toast('Minimaal 4 spelers nodig'); return; }
   state.bedrieger = state.players[Math.floor(Math.random() * state.players.length)].name;
   state.bedriegerTheme = theme;
-  document.getElementById('bhp-theme').textContent = theme;
   document.getElementById('bhp-vote-status').style.display = 'none';
+  document.getElementById('bhp-player-grid').innerHTML = state.players.map(p => {
+    const dur = (2.5 + Math.random() * 2.5).toFixed(2) + 's';
+    const del = (Math.random() * 2).toFixed(2) + 's';
+    const av = p.photo
+      ? `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+      : `<span style="color:${p.color};font-family:var(--font-d);font-weight:900;font-size:1.3rem">${p.name[0].toUpperCase()}</span>`;
+    return `<div class="bd-bubble" style="--bd-dur:${dur};--bd-del:${del};display:flex;flex-direction:column;align-items:center;gap:0.5rem">
+      <div style="width:68px;height:68px;border-radius:50%;overflow:hidden;border:3px solid ${p.color};display:flex;align-items:center;justify-content:center;background:${p.color}22;box-shadow:0 0 18px ${p.color}44;flex-shrink:0">${av}</div>
+      <div style="font-family:var(--font-d);font-size:0.68rem;font-weight:700;color:var(--text)">${esc(p.name)}</div>
+    </div>`;
+  }).join('');
   document.getElementById('bhp-start-vote-btn').disabled = false;
   clearListeners();
   roomRoot().update({ phase: 'bedrieger-theme', bedrieger: state.bedrieger, bedriegerTheme: theme, gameMode: 'bedrieger', votes: null });
