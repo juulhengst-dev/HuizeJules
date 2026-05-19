@@ -326,23 +326,99 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 
 /* ===== MOBIEL ===== */
 @media (max-width: 600px) {
+  /* --- Player answer --- */
   #player-answer { padding: 0.8rem; gap: 0.75rem; }
   .pa-inner { max-width: 100%; }
   .pa-question { padding: 1rem; }
   .pa-qtext { font-size: 0.88rem; }
   .pa-input-card { padding: 0.9rem; }
   textarea.field { min-height: 70px; }
+
+  /* --- Wie o Wie --- */
   .wie-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.5rem; }
   .wie-player-btn { padding: 0.65rem 0.4rem; font-size: 0.74rem; }
   .wie-avatar { width: 44px; height: 44px; font-size: 0.95rem; }
+
+  /* --- Player vote --- */
   #player-vote { padding: 0.8rem; }
   .pv-inner { max-width: 100%; }
   .vote-card { padding: 0.75rem 0.9rem; }
   .vc-text { font-size: 0.85rem; }
+
+  /* --- General buttons --- */
   .btn-lg { padding: 0.9rem 1.8rem; font-size: 0.88rem; }
+
+  /* --- Join --- */
   #join { padding: 1rem; }
   .join-card { padding: 1.4rem 1rem; }
+
+  /* --- Player waiting --- */
   .pw-card { padding: 1.8rem 1.2rem; }
+
+  /* --- Landing --- */
+  #landing { padding: 1.2rem; }
+  .land-btns { flex-direction: column; align-items: center; gap: 0.75rem; }
+  .land-btns .btn-lg { width: 100%; max-width: 320px; }
+  .land-feats { gap: 0.8rem; }
+
+  /* --- Game select --- */
+  #game-select { padding: 1.2rem; }
+  .gs-cards { flex-direction: column; align-items: center; gap: 1rem; }
+  .gs-card { max-width: 100%; width: 100%; padding: 1.5rem 1.2rem; }
+  .gs-sub { margin-bottom: 1.5rem; }
+
+  /* --- Host lobby --- */
+  #host-lobby { padding: 1rem; }
+  .hl-top { gap: 0.75rem; margin-bottom: 1.2rem; }
+  .room-badge { padding: 0.65rem 1.2rem; }
+  .room-badge-code { font-size: 2.2rem; }
+  .hl-body { grid-template-columns: 1fr; gap: 1rem; }
+  .player-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.75rem; }
+  .pc-avatar { width: 60px; height: 60px; font-size: 1.4rem; }
+  .hl-sidebar { order: -1; }
+  .player-count-big { font-size: 3rem; }
+
+  /* --- Host game --- */
+  #host-game { padding: 1rem; }
+  #host-game > div { padding: 1rem; }
+  .hg-question { padding: 1.5rem 1rem; }
+  .answers-grid { grid-template-columns: 1fr; gap: 0.75rem; }
+  .answer-card { padding: 1rem; }
+
+  /* --- Host scores --- */
+  #host-scores { padding: 1rem; }
+  #host-scores > div { padding: 1rem; }
+  .hs-title { font-size: 2.2rem; }
+  .score-row { padding: 0.75rem 1rem; gap: 0.75rem; }
+  .sr-rank { font-size: 1.1rem; }
+  .sr-pts { font-size: 1rem; }
+  .podium-block { width: 90px; }
+  .podium-block.p1 { height: 110px; }
+  .podium-block.p2 { height: 80px; }
+  .podium-block.p3 { height: 58px; }
+  .podium-av { width: 50px; height: 50px; font-size: 1.1rem; }
+  .podium-pname { font-size: 0.65rem; max-width: 80px; }
+
+  /* --- Rondje halen --- */
+  #host-rondje > div { padding: 1.5rem; }
+  #rondje-naam { font-size: 2rem; }
+
+  /* --- Bedrieger host play --- */
+  #bedrieger-host-play > div { padding: 1rem; }
+  #bhp-player-grid { gap: 0.9rem; }
+
+  /* --- Bedrieger player vote --- */
+  #bedrieger-player-vote { padding: 0.8rem; }
+
+  /* --- Bedrieger player wait --- */
+  #bedrieger-player-wait > div { padding: 1.2rem; }
+  #bpw-title { font-size: 1.2rem; }
+
+  /* --- Avatar logo kleiner op mobiel --- */
+  #hj-avatar { width: 64px; height: 64px; }
+
+  /* --- Fixed buttons (muziek/cast) --- */
+  #music-btn, #cast-btn { padding: 0.35rem 0.65rem; font-size: 0.9rem; }
 }
 </style>
 </head>
@@ -356,7 +432,7 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 <div class="bg-orb bg-orb-blue"></div>
 <button id="music-btn" onclick="toggleMusic()" style="position:fixed;top:1rem;right:1rem;z-index:999;background:var(--surface2);border:1px solid var(--border-bright);border-radius:99px;padding:0.45rem 0.85rem;font-size:1.1rem;cursor:pointer;transition:all 0.2s" title="Muziek aan/uit">🔊</button>
 <button id="cast-btn" onclick="startCast()" style="position:fixed;top:1rem;right:5rem;z-index:999;background:var(--surface2);border:1px solid var(--border-bright);border-radius:99px;padding:0.45rem 0.85rem;font-size:1.1rem;cursor:pointer;transition:all 0.2s" title="Cast naar TV">📺</button>
-<div id="hj-avatar" style="position:fixed;top:0.85rem;left:0.85rem;z-index:1000;width:100px;height:100px;border-radius:50%;overflow:hidden;opacity:1;transition:opacity 0.7s ease;box-shadow:0 0 0 2px rgba(255,255,255,0.1),0 2px 12px rgba(0,0,0,0.5)">
+<div id="hj-avatar" style="position:fixed;bottom:1rem;left:1rem;z-index:1000;width:100px;height:100px;border-radius:50%;overflow:hidden;opacity:1;transition:opacity 0.7s ease;box-shadow:0 0 0 2px rgba(255,255,255,0.1),0 2px 12px rgba(0,0,0,0.5)">
   <img src="IMG_2149.PNG" style="width:100%;height:100%;object-fit:cover;display:block">
 </div>
 
