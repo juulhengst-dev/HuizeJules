@@ -356,6 +356,9 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 <div class="bg-orb bg-orb-blue"></div>
 <button id="music-btn" onclick="toggleMusic()" style="position:fixed;top:1rem;right:1rem;z-index:999;background:var(--surface2);border:1px solid var(--border-bright);border-radius:99px;padding:0.45rem 0.85rem;font-size:1.1rem;cursor:pointer;transition:all 0.2s" title="Muziek aan/uit">🔊</button>
 <button id="cast-btn" onclick="startCast()" style="position:fixed;top:1rem;right:5rem;z-index:999;background:var(--surface2);border:1px solid var(--border-bright);border-radius:99px;padding:0.45rem 0.85rem;font-size:1.1rem;cursor:pointer;transition:all 0.2s" title="Cast naar TV">📺</button>
+<div id="hj-avatar" style="position:fixed;top:0.85rem;left:0.85rem;z-index:998;width:50px;height:50px;border-radius:50%;overflow:hidden;transition:opacity 0.7s ease;box-shadow:0 0 0 2px rgba(255,255,255,0.1),0 2px 12px rgba(0,0,0,0.5)">
+  <img src="IMG_2149.PNG" style="width:100%;height:100%;object-fit:cover;display:block">
+</div>
 
 <!-- LANDING -->
 <div class="screen active" id="landing">
@@ -736,10 +739,13 @@ function addListener(ref, event, fn) { ref.on(event, fn); activeListeners.push({
 function clearListeners() { activeListeners.forEach(({ ref, event, fn }) => ref.off(event, fn)); activeListeners = []; }
 
 const SCHERMEN_MET_BG = new Set(['landing','game-select','join','player-waiting','player-answer','player-vote','player-done','host-lobby','host-game','host-rondje','spectator','bedrieger-host-play','bedrieger-player-vote','bedrieger-player-wait']);
+const SCHERMEN_ZWART = new Set(['bedrieger-host-reveal','bedrieger-player-theme']);
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   document.getElementById('site-bg').classList.toggle('zichtbaar', SCHERMEN_MET_BG.has(id));
+  const av = document.getElementById('hj-avatar');
+  if (av) av.style.opacity = SCHERMEN_ZWART.has(id) ? '0' : '1';
 }
 
 // ===== HOST =====
