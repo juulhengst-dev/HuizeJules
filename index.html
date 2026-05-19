@@ -251,6 +251,16 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 .gs-card:hover { transform: scale(1.06); }
 .gs-card.wie:hover { border-color: var(--red); box-shadow: 0 0 35px var(--red-glow); }
 .gs-card.demo:hover { border-color: var(--blue-bright); box-shadow: 0 0 35px var(--blue-glow); }
+.gs-card.bedrieger:hover { border-color: #ff6b35; box-shadow: 0 0 35px rgba(255,107,53,0.4); }
+
+/* ===== BEDRIEGER ===== */
+#bedrieger-player-theme { background: #000; }
+#bedrieger-host-reveal { background: #000; }
+#bedrieger-player-vote { padding: 1.2rem; gap: 1rem; justify-content: center; }
+#bedrieger-player-wait { align-items: center; justify-content: center; padding: 2rem; text-align: center; }
+#bedrieger-vote-list .vote-card:hover { border-color: var(--red); }
+#bedrieger-vote-list .vote-card.selected { border-color: var(--red); background: var(--red-dim); box-shadow: 0 0 20px var(--red-glow); }
+#bedrieger-vote-list .vote-card.selected .vc-letter { background: var(--red); color: #fff; }
 .gs-card-icon { font-size: 2.8rem; }
 .gs-card-name { font-family: var(--font-d); font-weight: 700; font-size: 1rem; }
 .gs-card-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.55; }
@@ -381,6 +391,11 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
       <div class="gs-card-name">Democratie in Creatie</div>
       <div class="gs-card-desc">Bedenk het grappigste antwoord op een vraag. De groep stemt op het beste!</div>
     </div>
+    <div class="gs-card bedrieger" onclick="selectGame('bedrieger')">
+      <div class="gs-card-icon">🕵️</div>
+      <div class="gs-card-name">Bedrieger</div>
+      <div class="gs-card-desc">Eén speler weet het thema niet. Wie is de bedrieger? Stem en ontdek het! Min. 4 spelers.</div>
+    </div>
   </div>
   <button class="btn btn-ghost btn-sm" onclick="show('landing')" style="margin-top:2rem">← Terug</button>
 </div>
@@ -411,7 +426,7 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
         <div class="player-count-big" id="player-count">0</div>
         <div style="color:var(--muted);font-size:0.82rem">spelers</div>
       </div>
-      <div class="card">
+      <div class="card" id="normal-settings-card">
         <div class="panel-title">Instellingen</div>
         <div style="display:flex;flex-direction:column;gap:0.75rem">
           <div>
@@ -433,6 +448,14 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
             </select>
           </div>
         </div>
+      </div>
+      <div class="card" id="bedrieger-settings-card" style="display:none">
+        <div class="panel-title">Bedrieger instellingen</div>
+        <div>
+          <div class="panel-title" style="margin-bottom:0.35rem">Thema</div>
+          <input class="field" id="bedrieger-theme-input" placeholder="Bijv. Dieren, Zomer, Netflix…" maxlength="40">
+        </div>
+        <div style="color:var(--muted);font-size:0.73rem;margin-top:0.75rem;line-height:1.5">Spelers zien het thema 10 seconden. Eén speler ziet niets — maar weet dat niet.</div>
       </div>
       <button class="btn btn-red btn-full" id="start-btn" onclick="startGame()" disabled>Wacht op spelers…</button>
       <button class="btn btn-ghost btn-sm" onclick="addFakePlayer()">+ Demo-speler toevoegen</button>
@@ -598,15 +621,68 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
   <div id="spectator-content" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:3rem;text-align:center;width:100%"></div>
 </div>
 
+<!-- BEDRIEGER HOST PLAY -->
+<div class="screen" id="bedrieger-host-play">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:3rem;text-align:center">
+    <div style="background:var(--surface);border:1px solid var(--border-bright);border-radius:20px;padding:2rem 3rem;margin-bottom:2.5rem;max-width:500px;width:100%">
+      <div style="font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem">Thema</div>
+      <div id="bhp-theme" style="font-family:var(--font-d);font-size:2rem;color:var(--text);margin-bottom:1.5rem"></div>
+      <div style="font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem">Bedrieger</div>
+      <div id="bhp-bedrieger" style="font-family:var(--font-d);font-size:1.5rem;color:var(--red)"></div>
+    </div>
+    <div style="color:var(--muted);font-size:0.88rem;margin-bottom:2.5rem;max-width:420px;line-height:1.6">Spelers nemen beurten om een woord te noemen.<br>Druk de knop als iedereen aan de beurt is geweest.</div>
+    <button class="btn btn-red btn-lg" id="bhp-start-vote-btn" onclick="startBedriegersVote()">Start stemmen 🗳️</button>
+    <div id="bhp-vote-status" style="margin-top:2rem;color:var(--muted);font-size:0.88rem;display:none">
+      <span id="bhp-vote-count">0</span>/<span id="bhp-vote-total">0</span> stemmen ontvangen…
+    </div>
+  </div>
+</div>
+
+<!-- BEDRIEGER HOST REVEAL -->
+<div class="screen" id="bedrieger-host-reveal">
+  <div id="bhr-content" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:3rem;text-align:center;width:100%;transition:opacity 0.4s ease"></div>
+</div>
+
+<!-- BEDRIEGER PLAYER THEME -->
+<div class="screen" id="bedrieger-player-theme">
+  <div id="bpt-content" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:3rem;text-align:center;width:100%;transition:opacity 1.5s ease"></div>
+</div>
+
+<!-- BEDRIEGER PLAYER VOTE -->
+<div class="screen" id="bedrieger-player-vote">
+  <div class="pv-inner">
+    <div class="pv-head">
+      <div class="pv-label">Wie is de bedrieger?</div>
+      <div class="pv-qtext">Kies een speler — geen zelfvote</div>
+    </div>
+    <div class="vote-cards" id="bedrieger-vote-list"></div>
+    <button class="btn btn-red btn-full" id="bpv-submit-btn" onclick="submitBedriegerVote()" disabled>Stem uitbrengen →</button>
+  </div>
+</div>
+
+<!-- BEDRIEGER PLAYER WAIT -->
+<div class="screen" id="bedrieger-player-wait">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;text-align:center">
+    <div id="bpw-icon" style="font-size:4rem;margin-bottom:1.2rem">🕵️</div>
+    <div id="bpw-title" style="font-family:var(--font-d);font-size:1.5rem;margin-bottom:0.6rem;line-height:1.2"></div>
+    <div id="bpw-sub" style="color:var(--muted);font-size:0.9rem;line-height:1.5;max-width:280px"></div>
+    <button class="btn btn-red" id="bpw-start-vote-btn" onclick="triggerBedriegersVote()" style="display:none;margin-top:1.5rem">Start stemmen</button>
+    <div class="dots" id="bpw-dots" style="justify-content:center;margin-top:1.8rem"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+  </div>
+</div>
+
 <!-- INTRO OVERLAY -->
 <div id="intro-overlay">
   <div class="intro-count-wrap" id="intro-count-section">
     <div class="intro-count-label">Het spel begint over…</div>
     <div id="intro-number">5</div>
   </div>
-  <div class="intro-players-wrap" id="intro-players-section" style="display:none">
+  <div class="intro-players-wrap" id="intro-players-section" style="display:none;opacity:0">
     <div class="intro-players-title">De spelers van vanavond</div>
     <div class="intro-players-grid" id="intro-players-grid"></div>
+    <div style="display:flex;justify-content:center;margin-top:2.5rem">
+      <button class="btn btn-red btn-lg" id="intro-continue-btn" onclick="introDoorgaan()">Starten →</button>
+    </div>
   </div>
   <div class="intro-welcome-wrap" id="intro-welcome">
     <div class="intro-welcome-logo"><span class="r">HUIZE</span><span class="b">JULES</span></div>
@@ -640,6 +716,7 @@ let state = {
   answers: {}, votes: {}, scores: {}, questions: [],
   myAnswered: false, myVote: null, myOwnAnswer: null,
   votePhaseShown: false, scoresShown: false, prevScores: {},
+  bedrieger: null, bedriegerTheme: null, bedriegerMyVote: null,
 };
 
 let activeListeners = [];
@@ -649,7 +726,7 @@ function roomRoot() { return db.ref(`rooms/${state.roomCode}`); }
 function addListener(ref, event, fn) { ref.on(event, fn); activeListeners.push({ ref, event, fn }); }
 function clearListeners() { activeListeners.forEach(({ ref, event, fn }) => ref.off(event, fn)); activeListeners = []; }
 
-const SCHERMEN_MET_BG = new Set(['landing','game-select','join','player-waiting','player-answer','player-vote','player-done','host-lobby','host-game','host-rondje','spectator']);
+const SCHERMEN_MET_BG = new Set(['landing','game-select','join','player-waiting','player-answer','player-vote','player-done','host-lobby','host-game','host-rondje','spectator','bedrieger-host-play','bedrieger-player-vote','bedrieger-player-wait']);
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -672,6 +749,9 @@ function showHostLobby() {
   document.getElementById('player-grid').innerHTML = `<div style="border:2px dashed var(--border);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:140px;color:var(--muted);font-size:0.78rem;gap:0.5rem"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Wachten op spelers…</div>`;
   document.getElementById('start-btn').disabled = true;
   document.getElementById('start-btn').textContent = 'Wacht op spelers…';
+  const isBedrieger = state.gameMode === 'bedrieger';
+  document.getElementById('normal-settings-card').style.display = isBedrieger ? 'none' : '';
+  document.getElementById('bedrieger-settings-card').style.display = isBedrieger ? '' : 'none';
   show('host-lobby');
   addListener(dbRef('players'), 'value', snap => {
     const data = snap.val() || {};
@@ -698,8 +778,13 @@ function renderLobby() {
   document.getElementById('player-count').textContent = n;
   document.getElementById('lobby-count-label').textContent = n === 0 ? 'Wachten op spelers…' : `${n} speler${n>1?'s':''} in de lobby`;
   const btn = document.getElementById('start-btn');
-  if (n >= 2) { btn.disabled = false; btn.textContent = `Start het spel! (${n} spelers)`; }
-  else { btn.disabled = true; btn.textContent = n === 1 ? 'Nog minimaal 1 speler nodig…' : 'Wacht op spelers…'; }
+  const minP = state.gameMode === 'bedrieger' ? 4 : 2;
+  if (n >= minP) { btn.disabled = false; btn.textContent = `Start het spel! (${n} spelers)`; }
+  else {
+    btn.disabled = true;
+    const need = minP - n;
+    btn.textContent = n === 0 ? 'Wacht op spelers…' : `Nog ${need} speler${need > 1 ? 's' : ''} nodig…`;
+  }
 }
 
 function handleAvatarUpload(e) {
@@ -816,6 +901,31 @@ function joinGame() {
         document.getElementById('pd-waiting').style.display = 'none';
         document.getElementById('pd-scores').style.display = 'flex';
         show('player-done');
+      } else if (phase === 'bedrieger-theme' && phase !== lastPhase) {
+        lastPhase = phase;
+        showBedriegerTheme(data);
+      } else if (phase === 'bedrieger-vote' && phase !== lastPhase) {
+        lastPhase = phase;
+        state.bedriegerMyVote = null;
+        showBedriegerVote(data);
+      } else if (phase === 'bedrieger-reveal' && phase !== lastPhase) {
+        lastPhase = phase;
+        document.getElementById('bpw-icon').textContent = '📺';
+        document.getElementById('bpw-title').textContent = 'Onthulling!';
+        document.getElementById('bpw-sub').textContent = 'Kijk naar de TV…';
+        document.getElementById('bpw-start-vote-btn').style.display = 'none';
+        document.getElementById('bpw-dots').style.display = '';
+        show('bedrieger-player-wait');
+      } else if (phase === 'bedrieger-end' && phase !== lastPhase) {
+        lastPhase = phase;
+        const caught = data.bedriegerCaught;
+        document.getElementById('bpw-icon').textContent = caught ? '🎉' : '🕵️';
+        document.getElementById('bpw-title').textContent = caught ? `${esc(data.bedrieger)} was de bedrieger!` : 'De bedrieger was SUS';
+        document.getElementById('bpw-sub').textContent = caught ? `${esc(data.bedrieger)}, Jij was SUS` : `${esc(data.bedrieger)} was het — niemand raadde het!`;
+        document.getElementById('bpw-start-vote-btn').style.display = 'none';
+        document.getElementById('bpw-dots').style.display = 'none';
+        show('bedrieger-player-wait');
+        setTimeout(() => endBedriegerGame(), 3000);
       }
     });
   });
@@ -823,6 +933,7 @@ function joinGame() {
 
 // ===== HOST SPEL =====
 function startGame() {
+  if (state.gameMode === 'bedrieger') { startBedriegerGame(); return; }
   state.totalRounds = parseInt(document.getElementById('rounds-select').value);
   state.answerTime = parseInt(document.getElementById('time-select').value);
   state.currentRound = 0;
@@ -875,42 +986,50 @@ function showIntro() {
             </div>
             ${p.detail ? `<div class="intro-p-detail">"${esc(p.detail)}"</div>` : ''}
           </div>`).join('');
+        // Fade in vanuit zwart
         playersSection.style.display = 'block';
-
-        setTimeout(() => {
-          // Vervagen van spelers naar zwart
-          playersSection.style.transition = 'opacity 1.5s ease';
-          playersSection.style.opacity = '0';
-          setTimeout(() => {
-            playersSection.style.display = 'none';
-            playersSection.style.opacity = '1';
-            playersSection.style.transition = '';
-            // Welkomstscherm tonen
-            const welcome = document.getElementById('intro-welcome');
-            welcome.style.display = 'flex';
-            welcome.style.opacity = '0';
-            welcome.style.transition = 'opacity 1.2s ease';
-            void welcome.offsetWidth;
-            welcome.style.opacity = '1';
-            // Na welkomstscherm vervagen naar zwart en starten
-            setTimeout(() => {
-              overlay.style.transition = 'opacity 1.8s ease';
-              overlay.style.opacity = '0';
-              setTimeout(() => {
-                overlay.style.display = 'none';
-                overlay.style.opacity = '1';
-                overlay.style.transition = '';
-                overlay.className = '';
-                welcome.style.display = 'none';
-                screenTransition(startRound);
-              }, 1800);
-            }, 3000);
-          }, 1500);
-        }, 4000);
+        playersSection.style.opacity = '0';
+        playersSection.style.transition = 'opacity 1s ease';
+        void playersSection.offsetWidth;
+        playersSection.style.opacity = '1';
       }, 600);
     }
   }
   tick();
+}
+
+function introDoorgaan() {
+  document.getElementById('intro-continue-btn').disabled = true;
+  const playersSection = document.getElementById('intro-players-section');
+  const overlay = document.getElementById('intro-overlay');
+  // Fade naar zwart
+  playersSection.style.transition = 'opacity 0.9s ease';
+  playersSection.style.opacity = '0';
+  setTimeout(() => {
+    playersSection.style.display = 'none';
+    playersSection.style.opacity = '1';
+    playersSection.style.transition = '';
+    // Welkomstscherm fade in
+    const welcome = document.getElementById('intro-welcome');
+    welcome.style.display = 'flex';
+    welcome.style.opacity = '0';
+    welcome.style.transition = 'opacity 1.2s ease';
+    void welcome.offsetWidth;
+    welcome.style.opacity = '1';
+    // Na welkomstscherm: fade naar zwart en starten
+    setTimeout(() => {
+      overlay.style.transition = 'opacity 1.8s ease';
+      overlay.style.opacity = '0';
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        overlay.style.opacity = '1';
+        overlay.style.transition = '';
+        overlay.className = '';
+        welcome.style.display = 'none';
+        screenTransition(startRound);
+      }, 1800);
+    }, 3000);
+  }, 900);
 }
 
 function startRound() {
@@ -1344,6 +1463,18 @@ function renderSpectator(data, roomCode, el) {
     el.innerHTML = `
       <div style="font-family:var(--font-d);font-size:3rem;color:var(--red);margin-bottom:1.5rem">WIE O WIE</div>
       <div style="color:var(--muted);font-size:1.3rem">De resultaten worden bekendgemaakt...</div>`;
+  } else if (phase === 'bedrieger-theme') {
+    el.innerHTML = `
+      <div style="font-family:var(--font-d);font-size:3rem;color:#ff6b35;margin-bottom:1.5rem">🕵️ BEDRIEGER</div>
+      <div style="color:var(--muted);font-size:1.3rem">Spelers ontvangen het thema…</div>`;
+  } else if (phase === 'bedrieger-vote') {
+    el.innerHTML = `
+      <div style="font-family:var(--font-d);font-size:2.5rem;color:#ff6b35;margin-bottom:1.5rem">WIE IS DE BEDRIEGER?</div>
+      <div style="color:var(--muted);font-size:1.3rem">Stem op je telefoon</div>`;
+  } else if (phase === 'bedrieger-reveal' || phase === 'bedrieger-end') {
+    el.innerHTML = `
+      <div style="font-family:var(--font-d);font-size:3rem;color:var(--red);margin-bottom:1.5rem">ONTHULLING!</div>
+      <div style="color:var(--muted);font-size:1.3rem">Kijk naar het grote scherm…</div>`;
   } else if (phase === 'scores') {
     const sorted = Object.entries(scores || {}).sort((a, b) => b[1] - a[1]);
     const rankColors = ['#FFD700','#C0C0C0','#CD7F32'];
@@ -1361,6 +1492,226 @@ function renderSpectator(data, roomCode, el) {
 }
 
 initSpectator();
+
+// ===== BEDRIEGER SPEL =====
+function startBedriegerGame() {
+  const theme = (document.getElementById('bedrieger-theme-input')?.value || '').trim();
+  if (!theme) { toast('Vul een thema in'); return; }
+  if (state.players.length < 4) { toast('Minimaal 4 spelers nodig'); return; }
+  state.bedrieger = state.players[Math.floor(Math.random() * state.players.length)].name;
+  state.bedriegerTheme = theme;
+  document.getElementById('bhp-theme').textContent = theme;
+  document.getElementById('bhp-bedrieger').textContent = state.bedrieger;
+  document.getElementById('bhp-vote-status').style.display = 'none';
+  document.getElementById('bhp-start-vote-btn').disabled = false;
+  clearListeners();
+  roomRoot().update({ phase: 'bedrieger-theme', bedrieger: state.bedrieger, bedriegerTheme: theme, gameMode: 'bedrieger', votes: null });
+  show('bedrieger-host-play');
+  // Listen for voting start — triggered by host button or any player's button
+  let voteSetup = false;
+  addListener(roomRoot(), 'value', snap => {
+    const d = snap.val();
+    if (!d || voteSetup || d.phase !== 'bedrieger-vote') return;
+    voteSetup = true;
+    document.getElementById('bhp-start-vote-btn').disabled = true;
+    document.getElementById('bhp-vote-total').textContent = state.players.length;
+    document.getElementById('bhp-vote-count').textContent = '0';
+    document.getElementById('bhp-vote-status').style.display = 'block';
+    clearListeners();
+    let revealed = false;
+    addListener(dbRef('votes'), 'value', snap2 => {
+      if (revealed) return;
+      const votes = snap2.val() || {};
+      const count = Object.keys(votes).length;
+      document.getElementById('bhp-vote-count').textContent = count;
+      if (count >= state.players.length && state.players.length > 0) {
+        revealed = true;
+        clearListeners();
+        revealBedriegerResult(votes);
+      }
+    });
+  });
+}
+
+function startBedriegersVote() { triggerBedriegersVote(); }
+
+function triggerBedriegersVote() {
+  db.ref(`rooms/${state.roomCode}`).update({ phase: 'bedrieger-vote', votes: null });
+}
+
+function revealBedriegerResult(votes) {
+  const counts = {};
+  Object.values(votes).forEach(v => { counts[v] = (counts[v] || 0) + 1; });
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const topPlayer = sorted[0]?.[0];
+  const caught = topPlayer === state.bedrieger;
+  roomRoot().update({ phase: 'bedrieger-reveal', bedriegerCaught: caught });
+  show('bedrieger-host-reveal');
+  const content = document.getElementById('bhr-content');
+
+  function showNum(n, cb) {
+    content.style.opacity = '0';
+    content.innerHTML = `<div style="font-family:var(--font-d);font-size:clamp(10rem,30vw,18rem);font-weight:900;color:var(--red);line-height:1;text-shadow:0 0 80px var(--red-glow)">${n}</div>`;
+    setTimeout(() => {
+      content.style.opacity = '1';
+      setTimeout(() => { content.style.opacity = '0'; setTimeout(cb, 400); }, 900);
+    }, 50);
+  }
+
+  function runCount(n, done) {
+    if (n < 1) { done(); return; }
+    showNum(n, () => runCount(n - 1, done));
+  }
+
+  runCount(5, () => {
+    content.style.opacity = '0';
+    const sus = caught ? `<div style="font-family:var(--font-d);font-size:clamp(1.2rem,4vw,2rem);color:#00e676;margin-top:1rem;text-shadow:0 0 40px rgba(0,230,118,0.45)">${esc(state.bedrieger)}, Jij was SUS</div>` : `<div style="font-family:var(--font-d);font-size:1.2rem;color:var(--muted);margin-top:1rem">De bedrieger was SUS</div>`;
+    content.innerHTML = `
+      <div style="font-size:0.75rem;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:1.5rem">De bedrieger was…</div>
+      <div style="font-family:var(--font-d);font-size:clamp(2.5rem,10vw,5rem);font-weight:900;color:var(--red);line-height:1;text-shadow:0 0 60px var(--red-glow)">${esc(state.bedrieger)}</div>
+      ${sus}`;
+    setTimeout(() => {
+      content.style.opacity = '1';
+      if (caught) setTimeout(launchConfetti, 600);
+      roomRoot().update({ phase: 'bedrieger-end', bedriegerCaught: caught, bedrieger: state.bedrieger });
+      setTimeout(endBedriegerGame, 5000);
+    }, 50);
+  });
+}
+
+function endBedriegerGame() {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:#000;opacity:0;z-index:9999;transition:opacity 15s ease;pointer-events:all';
+  document.body.appendChild(overlay);
+  void overlay.offsetWidth;
+  overlay.style.opacity = '1';
+  setTimeout(() => {
+    overlay.remove();
+    clearListeners();
+    if (state.mode === 'host') roomRoot().remove();
+    state.mode = null; state.bedrieger = null; state.bedriegerTheme = null;
+    show('landing');
+  }, 15000);
+}
+
+function launchConfetti() {
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:fixed;inset:0;z-index:9998;pointer-events:none';
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  const clrs = ['#e8193c','#1560f5','#00e676','#FFD700','#ff6b35','#9c27b0'];
+  const pieces = Array.from({length: 130}, () => ({
+    x: Math.random() * canvas.width, y: -20,
+    r: 4 + Math.random() * 5,
+    color: clrs[Math.floor(Math.random() * clrs.length)],
+    vx: (Math.random() - 0.5) * 3, vy: 2 + Math.random() * 3,
+    tilt: Math.random() * 360, ts: (Math.random() - 0.5) * 4,
+  }));
+  let f = 0;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, p.r, p.r * 0.5, p.tilt * Math.PI / 180, 0, 2 * Math.PI);
+      ctx.fillStyle = p.color; ctx.fill();
+      p.x += p.vx; p.y += p.vy; p.vy += 0.07; p.tilt += p.ts;
+    });
+    if (++f < 220) requestAnimationFrame(draw); else canvas.remove();
+  }
+  draw();
+}
+
+function showBedriegerTheme(data) {
+  const isBedrieger = data.bedrieger === state.myName;
+  const content = document.getElementById('bpt-content');
+  const isActive = () => document.getElementById('bedrieger-player-theme').classList.contains('active');
+  const FADE = 1200;
+
+  // Step 1: "Houd je telefoon dichtbij je" warning
+  content.style.background = '#07071a';
+  content.style.transition = '';
+  content.style.opacity = '0';
+  content.innerHTML = `
+    <div style="font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:1.5rem">Let op</div>
+    <div style="font-family:var(--font-d);font-size:clamp(1.6rem,5vw,2.5rem);font-weight:900;color:#fff;line-height:1.25">Houd je telefoon<br>dichtbij je</div>`;
+  show('bedrieger-player-theme');
+
+  setTimeout(() => {
+    content.style.transition = `opacity ${FADE}ms ease`;
+    content.style.opacity = '1';
+  }, 100);
+
+  // Fade out warning after fade-in + 2s visible
+  setTimeout(() => {
+    if (!isActive()) return;
+    content.style.opacity = '0';
+
+    // Step 2: show real content after warning fades
+    setTimeout(() => {
+      if (!isActive()) return;
+      if (isBedrieger) {
+        content.style.background = '#9b0011';
+        content.innerHTML = `
+          <div style="font-family:var(--font-d);font-size:2rem;font-weight:900;color:#fff;margin-bottom:0.3rem">JIJ BENT DE</div>
+          <div style="font-family:var(--font-d);font-size:2.8rem;font-weight:900;color:#fff;letter-spacing:0.04em">BEDRIEGER</div>
+          <div style="color:rgba(255,255,255,0.65);font-size:0.85rem;margin-top:1.5rem;max-width:280px;line-height:1.5">Je weet het thema niet — zorg dat je niet door de mand valt!</div>`;
+      } else {
+        content.style.background = '#07071a';
+        content.innerHTML = `
+          <div style="font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:1rem">Het thema is</div>
+          <div style="font-family:var(--font-d);font-size:clamp(2rem,8vw,3.5rem);font-weight:900;color:#fff;line-height:1.1">${esc(data.bedriegerTheme || '')}</div>
+          <div style="color:rgba(255,255,255,0.3);font-size:0.78rem;margin-top:2rem">Onthoud dit! De schermen verdwijnen zo.</div>`;
+      }
+      content.style.opacity = '1';
+
+      // Step 3: fade out after 10s visible, then show wait screen with vote button
+      setTimeout(() => {
+        if (!isActive()) return;
+        content.style.opacity = '0';
+        setTimeout(() => {
+          if (!isActive()) return;
+          document.getElementById('bpw-icon').textContent = '🎭';
+          document.getElementById('bpw-title').textContent = 'Noem een woord!';
+          document.getElementById('bpw-sub').textContent = 'Druk de knop als iedereen aan de beurt is geweest.';
+          document.getElementById('bpw-start-vote-btn').style.display = '';
+          document.getElementById('bpw-dots').style.display = 'none';
+          show('bedrieger-player-wait');
+        }, FADE + 100);
+      }, 10000);
+    }, FADE + 100);
+  }, 100 + FADE + 2000);
+}
+
+function showBedriegerVote(data) {
+  state.bedriegerMyVote = null;
+  document.getElementById('bpv-submit-btn').disabled = true;
+  const players = data.players ? (Array.isArray(data.players) ? data.players : Object.values(data.players)) : [];
+  const opts = players.filter(p => p.name !== state.myName);
+  document.getElementById('bedrieger-vote-list').innerHTML = opts.map((p, i) => `
+    <div class="vote-card" onclick="selectBedriegerVote(${i},'${esc(p.name).replace(/'/g,"&#39;")}')">
+      <div class="vc-letter" style="font-family:var(--font-d);font-weight:900;color:${p.color||'var(--text)'}">${p.name[0].toUpperCase()}</div>
+      <div class="vc-text">${esc(p.name)}</div>
+    </div>`).join('');
+  show('bedrieger-player-vote');
+}
+
+function selectBedriegerVote(idx, name) {
+  state.bedriegerMyVote = name;
+  document.querySelectorAll('#bedrieger-vote-list .vote-card').forEach((el, i) => el.classList.toggle('selected', i === idx));
+  document.getElementById('bpv-submit-btn').disabled = false;
+}
+
+function submitBedriegerVote() {
+  if (!state.bedriegerMyVote) return;
+  db.ref(`rooms/${state.roomCode}/votes/${state.myName}`).set(state.bedriegerMyVote);
+  document.getElementById('bpw-icon').textContent = '🗳️';
+  document.getElementById('bpw-title').textContent = 'Stem uitgebracht!';
+  document.getElementById('bpw-sub').textContent = 'Wacht op de onthulling op de TV…';
+  document.getElementById('bpw-start-vote-btn').style.display = 'none';
+  document.getElementById('bpw-dots').style.display = '';
+  show('bedrieger-player-wait');
+}
 
 function rndCode() { return Math.random().toString(36).substring(2,6).toUpperCase(); }
 function shuffle(a) { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]} return a; }
