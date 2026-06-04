@@ -439,6 +439,10 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 <div class="bg-grid"></div>
 <div class="bg-orb bg-orb-red"></div>
 <div class="bg-orb bg-orb-blue"></div>
+<div id="game-room-badge" style="display:none;position:fixed;bottom:1rem;right:1rem;z-index:998;background:var(--surface2);border:1px solid rgba(61,127,255,0.35);border-radius:10px;padding:0.35rem 0.75rem;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.4)">
+  <div style="font-size:0.5rem;letter-spacing:0.13em;text-transform:uppercase;color:var(--muted);margin-bottom:0.1rem">Room code</div>
+  <div id="game-room-code-text" style="font-family:var(--font-d);font-size:1.1rem;font-weight:900;letter-spacing:0.2em;color:var(--blue-bright)"></div>
+</div>
 <button id="music-btn" onclick="toggleMusic()" style="position:fixed;top:1rem;right:1rem;z-index:999;background:var(--surface2);border:1px solid var(--border-bright);border-radius:99px;padding:0.45rem 0.85rem;font-size:1.1rem;cursor:pointer;transition:all 0.2s" title="Muziek aan/uit">🔊</button>
 <button id="cast-btn" onclick="startCast()" style="position:fixed;top:1rem;right:5rem;z-index:999;background:var(--surface2);border:1px solid var(--border-bright);border-radius:99px;padding:0.45rem 0.85rem;font-size:1.1rem;cursor:pointer;transition:all 0.2s" title="Cast naar TV">📺</button>
 <div id="hj-avatar" style="position:fixed;bottom:1rem;left:1rem;z-index:1000;width:100px;height:100px;border-radius:50%;overflow:hidden;opacity:1;transition:opacity 0.7s ease;box-shadow:0 0 0 2px rgba(255,255,255,0.1),0 2px 12px rgba(0,0,0,0.5)">
@@ -854,12 +858,19 @@ function clearListeners() { activeListeners.forEach(({ ref, event, fn }) => ref.
 const SCHERMEN_MET_BG = new Set(['landing','game-select','join','player-waiting','player-answer','player-vote','player-done','host-lobby','host-game','host-rondje','spectator','bedrieger-host-play','bedrieger-player-vote','bedrieger-player-wait']);
 const SCHERMEN_ZWART = new Set(['bedrieger-host-reveal','bedrieger-player-theme']);
 const SCHERMEN_ZONDER_AVATAR = new Set(['host-lobby','join']);
+const SCHERMEN_ROOMCODE = new Set(['host-game','host-scores','host-rondje']);
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   document.getElementById('site-bg').classList.toggle('zichtbaar', SCHERMEN_MET_BG.has(id));
   const av = document.getElementById('hj-avatar');
   if (av) av.style.opacity = (SCHERMEN_ZWART.has(id) || SCHERMEN_ZONDER_AVATAR.has(id)) ? '0' : '1';
+  const badge = document.getElementById('game-room-badge');
+  if (badge) {
+    const show = SCHERMEN_ROOMCODE.has(id);
+    badge.style.display = show ? 'block' : 'none';
+    if (show) document.getElementById('game-room-code-text').textContent = state.roomCode;
+  }
 }
 
 // ===== HOST =====
@@ -955,7 +966,9 @@ function joinGame() {
     state.roomCode = code;
     clearListeners();
 
-    db.ref(`rooms/${code}/players/${name}`).set({ name, detail, color: state.myColor, photo: state.myPhoto });
+    const playerRef = db.ref(`rooms/${code}/players/${name}`);
+    playerRef.onDisconnect().remove();
+    playerRef.set({ name, detail, color: state.myColor, photo: state.myPhoto });
 
     const pw = document.getElementById('pw-avatar');
     if (state.myPhoto) {
@@ -1091,6 +1104,7 @@ function showIntro() {
   const playersSection = document.getElementById('intro-players-section');
   const numEl = document.getElementById('intro-number');
 
+  document.getElementById('intro-continue-btn').disabled = false;
   overlay.style.display = 'flex';
   overlay.className = 'phase-count';
   countSection.style.display = 'flex';
