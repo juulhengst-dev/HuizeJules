@@ -545,6 +545,7 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
         <div>
           <div class="panel-title" style="margin-bottom:0.35rem">Thema</div>
           <input class="field" id="bedrieger-theme-input" placeholder="Bijv. Dieren, Zomer, Netflix…" maxlength="40">
+          <button class="btn btn-ghost btn-sm btn-full" onclick="pickRandomThema()" style="margin-top:0.55rem">Willekeurig thema</button>
         </div>
         <div style="color:var(--muted);font-size:0.73rem;margin-top:0.75rem;line-height:1.5">Spelers zien het thema 10 seconden. Eén speler ziet niets — maar weet dat niet.</div>
       </div>
@@ -808,6 +809,29 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 const PALETTE = ['#e8193c','#1560f5','#9c27b0','#ff6d00','#00897b','#c62828','#283593','#558b2f','#f57f17','#00838f'];
+
+const BEDRIEGER_THEMAS = [
+  'Dieren op de boerderij','Soorten kaas','Landen in Europa','Netflix series','Superhelden',
+  'Vakantiebestemmingen','Soorten bier','Steden in Nederland','Soorten pizza','Kledingmerken',
+  'Videospellen','Soorten cocktails','Olympische sporten','Zeedieren','Soorten ijs',
+  'Disney figuren','Soorten pasta','Automerken','Soorten koffie','Muziekgenres',
+  'Beroemde gebouwen','Soorten sushi','Bloemen','Soorten honden','Planeten',
+  'Harry Potter personages','Marvel superhelden','Soorten snoep','Soorten koekjes','Beroemde YouTubers',
+  'Soorten schoenen','Landen in Azië','Soorten vis','Steden in Amerika','Danssoorten',
+  'Soorten taart','Soorten chips','Muziekinstrumenten','Soorten brood','Sociale media apps',
+  'Soorten thee','Stripfiguren','Soorten noten','Beroemde voetballers','Soorten soep',
+  'Landen in Zuid-Amerika','Beroemde acteurs','Soorten wijn','Soorten vlees','Winkelketens',
+  'Soorten chocolade','Feestdagen','Soorten saus','Steden in België','Soorten ontbijt',
+  'Soorten groenten','Soorten fruit','Landen in Afrika','Smartphone merken','Soorten dessert',
+  'Game of Thrones personages','Soorten frisdrank','Soorten kaartspellen','Beroemde schilders',
+  'Soorten paddestoelen','Soorten sandwich','Beroemde wetenschappers','Soorten sport in de gym',
+  'Landen in Zuid-Europa','Soorten snacks','Soorten crackers',
+];
+
+function pickRandomThema() {
+  const t = BEDRIEGER_THEMAS[Math.floor(Math.random() * BEDRIEGER_THEMAS.length)];
+  document.getElementById('bedrieger-theme-input').value = t;
+}
 // Vragen worden geladen vanuit vragen.js
 
 let state = {
