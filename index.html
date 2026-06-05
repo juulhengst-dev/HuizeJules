@@ -548,7 +548,7 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
         <div class="panel-title">Bedrieger instellingen</div>
         <div>
           <div class="panel-title" style="margin-bottom:0.35rem">Thema</div>
-          <input class="field" id="bedrieger-theme-input" placeholder="Bijv. Dieren, Zomer, Netflix…" maxlength="40">
+          <input class="field" id="bedrieger-theme-input" placeholder="Bijv. Dieren, Zomer, Netflix…" maxlength="40" oninput="this.type='text'">
           <button class="btn btn-ghost btn-sm btn-full" onclick="pickRandomThema()" style="margin-top:0.55rem">Willekeurig thema</button>
         </div>
         <div style="color:var(--muted);font-size:0.73rem;margin-top:0.75rem;line-height:1.5">Spelers zien het thema 10 seconden. Eén speler ziet niets — maar weet dat niet.</div>
@@ -834,7 +834,9 @@ const BEDRIEGER_THEMAS = [
 
 function pickRandomThema() {
   const t = BEDRIEGER_THEMAS[Math.floor(Math.random() * BEDRIEGER_THEMAS.length)];
-  document.getElementById('bedrieger-theme-input').value = t;
+  const inp = document.getElementById('bedrieger-theme-input');
+  inp.value = t;
+  inp.type = 'password';
 }
 // Vragen worden geladen vanuit vragen.js
 
@@ -842,7 +844,7 @@ let state = {
   mode: null, roomCode: '', gameMode: 'democratie',
   players: [], myName: '', myDetail: '', myColor: '', myPhoto: null,
   currentRound: 0, totalRounds: 10, answerTime: 60,
-  answers: {}, votes: {}, scores: {}, questions: [],
+  answers: {}, votes: {}, currentVotes: {}, scores: {}, questions: [],
   myAnswered: false, myVote: null, myOwnAnswer: null,
   votePhaseShown: false, scoresShown: false, prevScores: {},
   bedrieger: null, bedriegerTheme: null, bedriegerMyVote: null,
@@ -1176,7 +1178,7 @@ function introDoorgaan() {
 }
 
 function startRound() {
-  state.answers = {}; state.votes = {}; state.myAnswered = false; state.myVote = null; state.myOwnAnswer = null;
+  state.answers = {}; state.votes = {}; state.currentVotes = {}; state.myAnswered = false; state.myVote = null; state.myOwnAnswer = null;
   state.votePhaseShown = false; state.scoresShown = false;
   clearListeners();
   const q = state.questions[state.currentRound];
@@ -1188,6 +1190,28 @@ function startRound() {
   document.getElementById('host-vote-section').style.display = 'none';
   show('host-game');
   roomRoot().update({ phase: 'answering', currentRound: state.currentRound });
+
+  addListener(dbRef('players'), 'value', snap => {
+    const data = snap.val() || {};
+    state.players = Object.values(data);
+    if (!state.votePhaseShown) {
+      document.getElementById('answers-total').textContent = state.players.length;
+      const count = Object.keys(state.answers).length;
+      if (count >= state.players.length && state.players.length > 0) {
+        state.votePhaseShown = true;
+        if (state.gameMode === 'wie') showWieResults();
+        else showVotePhase();
+      }
+    } else if (!state.scoresShown && state.gameMode !== 'wie') {
+      const voteCount = Object.keys(state.currentVotes).length;
+      document.getElementById('vote-progress').textContent = `${voteCount}/${state.players.length}`;
+      if (voteCount >= state.players.length && state.players.length > 0) {
+        state.scoresShown = true; state.votes = state.currentVotes;
+        revealVoteResults(state.votes);
+        setTimeout(showScores, 10000);
+      }
+    }
+  });
 
   addListener(dbRef('answers'), 'value', snap => {
     if (state.votePhaseShown) return;
@@ -1227,6 +1251,7 @@ function showVotePhase() {
   addListener(dbRef('votes'), 'value', snap => {
     if (state.scoresShown) return;
     const data = snap.val() || {};
+    state.currentVotes = data;
     const voteCount = Object.keys(data).length;
     document.getElementById('vote-progress').textContent = `${voteCount}/${state.players.length}`;
     if (voteCount >= state.players.length && state.players.length > 0) {
