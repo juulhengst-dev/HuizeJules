@@ -546,12 +546,9 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
       </div>
       <div class="card" id="bedrieger-settings-card" style="display:none">
         <div class="panel-title">Bedrieger instellingen</div>
-        <div>
-          <div class="panel-title" style="margin-bottom:0.35rem">Thema</div>
-          <input class="field" id="bedrieger-theme-input" placeholder="Bijv. Dieren, Zomer, Netflix…" maxlength="40" oninput="this.type='text'">
-          <button class="btn btn-ghost btn-sm btn-full" onclick="pickRandomThema()" style="margin-top:0.55rem">Willekeurig thema</button>
-        </div>
-        <div style="color:var(--muted);font-size:0.73rem;margin-top:0.75rem;line-height:1.5">Spelers zien het thema 10 seconden. Eén speler ziet niets — maar weet dat niet.</div>
+        <button class="btn btn-ghost btn-sm btn-full" onclick="pickRandomThema()" id="random-thema-btn">Willekeurig thema</button>
+        <div id="random-thema-status" style="color:var(--muted);font-size:0.72rem;margin-top:0.45rem;text-align:center">Niet geselecteerd — speler kiest het thema</div>
+        <div style="color:var(--muted);font-size:0.73rem;margin-top:0.75rem;line-height:1.5">Zonder random thema voert een aangewezen speler het thema in na de rolonthulling.</div>
       </div>
       <button class="btn btn-red btn-full" id="start-btn" onclick="startGame()" disabled>Wacht op spelers…</button>
       <button class="btn btn-ghost btn-sm" onclick="addFakePlayer()">+ Demo-speler toevoegen</button>
@@ -723,6 +720,7 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 <!-- BEDRIEGER HOST PLAY -->
 <div class="screen" id="bedrieger-host-play">
   <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;text-align:center">
+    <div id="bhp-waiting-theme" style="display:none;color:var(--muted);font-size:0.9rem;margin-bottom:1.5rem">Wachten op thema van <span id="bhp-waiting-naam" style="color:var(--text);font-weight:600"></span>…</div>
     <div id="bhp-player-grid" style="display:flex;flex-wrap:wrap;justify-content:center;gap:1.4rem;margin-bottom:2.5rem;max-width:680px"></div>
     <div style="color:var(--muted);font-size:0.88rem;margin-bottom:2rem;max-width:420px;line-height:1.6">Spelers nemen beurten om een woord te noemen.<br>Druk de knop als iedereen aan de beurt is geweest.</div>
     <button class="btn btn-red btn-lg" id="bhp-start-vote-btn" onclick="startBedriegersVote()">Start stemmen 🗳️</button>
@@ -751,6 +749,19 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
     </div>
     <div class="vote-cards" id="bedrieger-vote-list"></div>
     <button class="btn btn-red btn-full" id="bpv-submit-btn" onclick="submitBedriegerVote()" disabled>Stem uitbrengen →</button>
+  </div>
+</div>
+
+<!-- BEDRIEGER PLAYER THEME INPUT -->
+<div class="screen" id="bedrieger-player-theme-input">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;text-align:center;background:#07071a">
+    <div style="font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:1rem">Jij kiest het thema</div>
+    <div style="font-family:var(--font-d);font-size:clamp(1.4rem,5vw,2rem);font-weight:900;color:#fff;margin-bottom:0.5rem">Wat is het thema?</div>
+    <div style="color:rgba(255,255,255,0.45);font-size:0.82rem;margin-bottom:2rem;max-width:280px;line-height:1.5">Alleen jij ziet dit scherm. De bedrieger krijgt straks een leeg thema.</div>
+    <div style="width:100%;max-width:340px;display:flex;flex-direction:column;gap:0.75rem">
+      <input class="field" id="thema-gever-input" placeholder="Bijv. Dieren, Netflix, Voetbal…" maxlength="40" style="text-align:center;font-size:1.1rem">
+      <button class="btn btn-blue btn-full" onclick="submitBedriegerThema()">Bevestig thema →</button>
+    </div>
   </div>
 </div>
 
@@ -832,11 +843,16 @@ const BEDRIEGER_THEMAS = [
   'Landen in Zuid-Europa','Soorten snacks','Soorten crackers',
 ];
 
+let bedriegersKeuzeThema = null;
+
 function pickRandomThema() {
-  const t = BEDRIEGER_THEMAS[Math.floor(Math.random() * BEDRIEGER_THEMAS.length)];
-  const inp = document.getElementById('bedrieger-theme-input');
-  inp.value = t;
-  inp.type = 'password';
+  bedriegersKeuzeThema = BEDRIEGER_THEMAS[Math.floor(Math.random() * BEDRIEGER_THEMAS.length)];
+  const btn = document.getElementById('random-thema-btn');
+  btn.textContent = 'Nieuw willekeurig thema';
+  btn.style.borderColor = 'var(--blue-bright)';
+  btn.style.color = 'var(--blue-bright)';
+  document.getElementById('random-thema-status').textContent = 'Thema geselecteerd (verborgen)';
+  document.getElementById('random-thema-status').style.color = 'var(--blue-bright)';
 }
 // Vragen worden geladen vanuit vragen.js
 
@@ -858,7 +874,7 @@ function addListener(ref, event, fn) { ref.on(event, fn); activeListeners.push({
 function clearListeners() { activeListeners.forEach(({ ref, event, fn }) => ref.off(event, fn)); activeListeners = []; }
 
 const SCHERMEN_MET_BG = new Set(['landing','game-select','join','player-waiting','player-answer','player-vote','player-done','host-lobby','host-game','host-rondje','spectator','bedrieger-host-play','bedrieger-player-vote','bedrieger-player-wait']);
-const SCHERMEN_ZWART = new Set(['bedrieger-host-reveal','bedrieger-player-theme']);
+const SCHERMEN_ZWART = new Set(['bedrieger-host-reveal','bedrieger-player-theme','bedrieger-player-theme-input']);
 const SCHERMEN_ZONDER_AVATAR = new Set(['host-lobby','join']);
 const SCHERMEN_ROOMCODE = new Set(['host-game','host-scores','host-rondje']);
 function show(id) {
@@ -884,6 +900,7 @@ function selectGame(mode) {
 function showHostLobby() {
   state.mode = 'host'; state.roomCode = rndCode();
   state.players = []; state.scores = {};
+  bedriegersKeuzeThema = null;
   clearListeners();
   roomRoot().set({ phase: 'lobby', gameMode: state.gameMode, createdAt: Date.now() });
   document.getElementById('room-code-display').textContent = state.roomCode;
@@ -1045,9 +1062,13 @@ function joinGame() {
         document.getElementById('pd-waiting').style.display = 'none';
         document.getElementById('pd-scores').style.display = 'flex';
         show('player-done');
+      } else if (phase === 'bedrieger-waiting-theme' && phase !== lastPhase) {
+        lastPhase = phase;
+        showBedriegerRoleReveal(data);
       } else if (phase === 'bedrieger-theme' && phase !== lastPhase) {
         lastPhase = phase;
-        showBedriegerTheme(data);
+        if (data.themaGever) showBedriegerThemeReveal(data);
+        else showBedriegerTheme(data);
       } else if (phase === 'bedrieger-vote' && phase !== lastPhase) {
         lastPhase = phase;
         state.bedriegerMyVote = null;
@@ -1640,7 +1661,7 @@ function renderSpectator(data, roomCode, el) {
     el.innerHTML = `
       <div style="font-family:var(--font-d);font-size:3rem;color:var(--red);margin-bottom:1.5rem">WIE O WIE</div>
       <div style="color:var(--muted);font-size:1.3rem">De resultaten worden bekendgemaakt...</div>`;
-  } else if (phase === 'bedrieger-theme') {
+  } else if (phase === 'bedrieger-waiting-theme' || phase === 'bedrieger-theme') {
     el.innerHTML = `
       <div style="font-family:var(--font-d);font-size:3rem;color:#ff6b35;margin-bottom:1.5rem">🕵️ BEDRIEGER</div>
       <div style="color:var(--muted);font-size:1.3rem">Spelers ontvangen het thema…</div>`;
@@ -1672,13 +1693,9 @@ initSpectator();
 
 // ===== BEDRIEGER SPEL =====
 function startBedriegerGame() {
-  const theme = (document.getElementById('bedrieger-theme-input')?.value || '').trim();
-  if (!theme) { toast('Vul een thema in'); return; }
   if (state.players.length < 4) { toast('Minimaal 4 spelers nodig'); return; }
   state.bedrieger = state.players[Math.floor(Math.random() * state.players.length)].name;
-  state.bedriegerTheme = theme;
-  document.getElementById('bhp-vote-status').style.display = 'none';
-  document.getElementById('bhp-player-grid').innerHTML = state.players.map(p => {
+  const bubbles = state.players.map(p => {
     const dur = (2.5 + Math.random() * 2.5).toFixed(2) + 's';
     const del = (Math.random() * 2).toFixed(2) + 's';
     const av = p.photo
@@ -1689,33 +1706,60 @@ function startBedriegerGame() {
       <div style="font-family:var(--font-d);font-size:0.68rem;font-weight:700;color:var(--text)">${esc(p.name)}</div>
     </div>`;
   }).join('');
-  document.getElementById('bhp-start-vote-btn').disabled = false;
+  document.getElementById('bhp-player-grid').innerHTML = bubbles;
+  document.getElementById('bhp-vote-status').style.display = 'none';
   clearListeners();
-  roomRoot().update({ phase: 'bedrieger-theme', bedrieger: state.bedrieger, bedriegerTheme: theme, gameMode: 'bedrieger', votes: null });
   show('bedrieger-host-play');
-  // Listen for voting start — triggered by host button or any player's button
+
+  const useRandom = !!bedriegersKeuzeThema;
+  if (useRandom) {
+    state.bedriegerTheme = bedriegersKeuzeThema;
+    document.getElementById('bhp-waiting-theme').style.display = 'none';
+    document.getElementById('bhp-start-vote-btn').style.display = '';
+    document.getElementById('bhp-start-vote-btn').disabled = false;
+    roomRoot().update({ phase: 'bedrieger-theme', bedrieger: state.bedrieger, bedriegerTheme: state.bedriegerTheme, gameMode: 'bedrieger', votes: null });
+  } else {
+    const nonBedriegers = state.players.filter(p => p.name !== state.bedrieger);
+    const themaGever = nonBedriegers[Math.floor(Math.random() * nonBedriegers.length)].name;
+    state.themaGever = themaGever;
+    document.getElementById('bhp-waiting-theme').style.display = 'block';
+    document.getElementById('bhp-waiting-naam').textContent = themaGever;
+    document.getElementById('bhp-start-vote-btn').style.display = 'none';
+    roomRoot().update({ phase: 'bedrieger-waiting-theme', bedrieger: state.bedrieger, themaGever, gameMode: 'bedrieger', votes: null });
+  }
+
+  let themeShown = false;
   let voteSetup = false;
   addListener(roomRoot(), 'value', snap => {
     const d = snap.val();
-    if (!d || voteSetup || d.phase !== 'bedrieger-vote') return;
-    voteSetup = true;
-    document.getElementById('bhp-start-vote-btn').disabled = true;
-    document.getElementById('bhp-vote-total').textContent = state.players.length;
-    document.getElementById('bhp-vote-count').textContent = '0';
-    document.getElementById('bhp-vote-status').style.display = 'block';
-    clearListeners();
-    let revealed = false;
-    addListener(dbRef('votes'), 'value', snap2 => {
-      if (revealed) return;
-      const votes = snap2.val() || {};
-      const count = Object.keys(votes).length;
-      document.getElementById('bhp-vote-count').textContent = count;
-      if (count >= state.players.length && state.players.length > 0) {
-        revealed = true;
-        clearListeners();
-        revealBedriegerResult(votes);
-      }
-    });
+    if (!d) return;
+    if (!useRandom && !themeShown && d.phase === 'bedrieger-theme' && d.bedriegerTheme) {
+      themeShown = true;
+      state.bedriegerTheme = d.bedriegerTheme;
+      document.getElementById('bhp-waiting-theme').style.display = 'none';
+      document.getElementById('bhp-start-vote-btn').style.display = '';
+      document.getElementById('bhp-start-vote-btn').disabled = false;
+    }
+    if (!voteSetup && d.phase === 'bedrieger-vote') {
+      voteSetup = true;
+      document.getElementById('bhp-start-vote-btn').disabled = true;
+      document.getElementById('bhp-vote-total').textContent = state.players.length;
+      document.getElementById('bhp-vote-count').textContent = '0';
+      document.getElementById('bhp-vote-status').style.display = 'block';
+      clearListeners();
+      let revealed = false;
+      addListener(dbRef('votes'), 'value', snap2 => {
+        if (revealed) return;
+        const votes = snap2.val() || {};
+        const count = Object.keys(votes).length;
+        document.getElementById('bhp-vote-count').textContent = count;
+        if (count >= state.players.length && state.players.length > 0) {
+          revealed = true;
+          clearListeners();
+          revealBedriegerResult(votes);
+        }
+      });
+    }
   });
 }
 
@@ -1728,6 +1772,110 @@ function triggerBedriegersVote() {
 function confirmVote(yes) {
   document.getElementById('confirm-overlay').style.display = 'none';
   if (yes) db.ref(`rooms/${state.roomCode}`).update({ phase: 'bedrieger-vote', votes: null });
+}
+
+function submitBedriegerThema() {
+  const theme = (document.getElementById('thema-gever-input').value || '').trim();
+  if (!theme) { toast('Vul een thema in'); return; }
+  db.ref(`rooms/${state.roomCode}`).update({ bedriegerTheme: theme, phase: 'bedrieger-theme' });
+}
+
+function showBedriegerRoleReveal(data) {
+  const isBedrieger = data.bedrieger === state.myName;
+  const isThemaGever = data.themaGever === state.myName;
+  const content = document.getElementById('bpt-content');
+  const isActive = () => document.getElementById('bedrieger-player-theme').classList.contains('active');
+  const FADE = 1200;
+
+  content.style.background = '#07071a';
+  content.style.transition = '';
+  content.style.opacity = '0';
+  content.innerHTML = `
+    <div style="font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:1.5rem">Let op</div>
+    <div style="font-family:var(--font-d);font-size:clamp(1.6rem,5vw,2.5rem);font-weight:900;color:#fff;line-height:1.25">Houd je telefoon<br>dichtbij je</div>`;
+  show('bedrieger-player-theme');
+
+  setTimeout(() => { content.style.transition = `opacity ${FADE}ms ease`; content.style.opacity = '1'; }, 100);
+
+  setTimeout(() => {
+    if (!isActive()) return;
+    content.style.opacity = '0';
+    setTimeout(() => {
+      if (!isActive()) return;
+      if (isBedrieger) {
+        content.style.background = '#9b0011';
+        content.innerHTML = `
+          <div style="font-family:var(--font-d);font-size:2rem;font-weight:900;color:#fff;margin-bottom:0.3rem">JIJ BENT DE</div>
+          <div style="font-family:var(--font-d);font-size:2.8rem;font-weight:900;color:#fff;letter-spacing:0.04em">BEDRIEGER</div>
+          <div style="color:rgba(255,255,255,0.65);font-size:0.85rem;margin-top:1.5rem;max-width:280px;line-height:1.5">Je weet het thema niet — zorg dat je niet door de mand valt!</div>`;
+      } else if (isThemaGever) {
+        content.style.background = '#07071a';
+        content.innerHTML = `
+          <div style="font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:1rem">Speciale taak</div>
+          <div style="font-family:var(--font-d);font-size:clamp(1.6rem,5vw,2.2rem);font-weight:900;color:var(--blue-bright);line-height:1.2">Jij kiest<br>het thema!</div>
+          <div style="color:rgba(255,255,255,0.5);font-size:0.82rem;margin-top:1.5rem;max-width:280px;line-height:1.5">De anderen wachten. Voer zo het thema in.</div>`;
+      } else {
+        content.style.background = '#07071a';
+        content.innerHTML = `
+          <div style="font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:1rem">Jouw rol</div>
+          <div style="font-family:var(--font-d);font-size:clamp(1.6rem,5vw,2.2rem);font-weight:900;color:#fff;line-height:1.2">Jij bent<br>geen bedrieger</div>
+          <div style="color:rgba(255,255,255,0.5);font-size:0.82rem;margin-top:1.5rem;max-width:280px;line-height:1.5">Het thema komt zo — wacht even.</div>`;
+      }
+      content.style.opacity = '1';
+
+      setTimeout(() => {
+        if (!isActive()) return;
+        content.style.opacity = '0';
+        setTimeout(() => {
+          if (!isActive()) return;
+          if (isThemaGever) {
+            document.getElementById('thema-gever-input').value = '';
+            show('bedrieger-player-theme-input');
+          } else {
+            document.getElementById('bpw-icon').textContent = '⏳';
+            document.getElementById('bpw-title').textContent = 'Thema wordt gekozen…';
+            document.getElementById('bpw-sub').textContent = 'Een medespeler voert het thema in.';
+            document.getElementById('bpw-start-vote-btn').style.display = 'none';
+            document.getElementById('bpw-dots').style.display = '';
+            show('bedrieger-player-wait');
+          }
+        }, FADE + 100);
+      }, 8000);
+    }, FADE + 100);
+  }, 100 + FADE + 2000);
+}
+
+function showBedriegerThemeReveal(data) {
+  const isBedrieger = data.bedrieger === state.myName;
+  const content = document.getElementById('bpt-content');
+  const isActive = () => document.getElementById('bedrieger-player-theme').classList.contains('active');
+  const FADE = 1000;
+
+  content.style.background = '#07071a';
+  content.style.transition = '';
+  content.style.opacity = '0';
+  content.innerHTML = isBedrieger
+    ? `<div style="font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-bottom:1.2rem">Jouw thema</div>
+       <div style="font-family:var(--font-d);font-size:clamp(1.8rem,7vw,3rem);font-weight:900;color:var(--blue-bright)">geen thema</div>`
+    : `<div style="font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-bottom:1.2rem">Het thema is</div>
+       <div style="font-family:var(--font-d);font-size:clamp(1.8rem,7vw,3rem);font-weight:900;color:var(--blue-bright)">${esc(data.bedriegerTheme || '')}</div>`;
+  show('bedrieger-player-theme');
+
+  setTimeout(() => { content.style.transition = `opacity ${FADE}ms ease`; content.style.opacity = '1'; }, 100);
+
+  setTimeout(() => {
+    if (!isActive()) return;
+    content.style.opacity = '0';
+    setTimeout(() => {
+      if (!isActive()) return;
+      document.getElementById('bpw-icon').textContent = '🎭';
+      document.getElementById('bpw-title').textContent = 'Noem een woord!';
+      document.getElementById('bpw-sub').textContent = 'Druk de knop als iedereen aan de beurt is geweest.';
+      document.getElementById('bpw-start-vote-btn').style.display = '';
+      document.getElementById('bpw-dots').style.display = 'none';
+      show('bedrieger-player-wait');
+    }, FADE + 100);
+  }, 8000);
 }
 
 function revealBedriegerResult(votes) {
