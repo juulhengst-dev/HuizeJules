@@ -720,7 +720,7 @@ textarea.field { resize: none; min-height: 90px; line-height: 1.5; }
 <!-- BEDRIEGER HOST PLAY -->
 <div class="screen" id="bedrieger-host-play">
   <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;text-align:center">
-    <div id="bhp-waiting-theme" style="display:none;color:var(--muted);font-size:0.9rem;margin-bottom:1.5rem">Wachten op thema van <span id="bhp-waiting-naam" style="color:var(--text);font-weight:600"></span>…</div>
+    <div id="bhp-waiting-theme" style="display:none;color:var(--muted);font-size:0.9rem;margin-bottom:1.5rem">Wachten op thema…</div>
     <div id="bhp-player-grid" style="display:flex;flex-wrap:wrap;justify-content:center;gap:1.4rem;margin-bottom:2.5rem;max-width:680px"></div>
     <div style="color:var(--muted);font-size:0.88rem;margin-bottom:2rem;max-width:420px;line-height:1.6">Spelers nemen beurten om een woord te noemen.<br>Druk de knop als iedereen aan de beurt is geweest.</div>
     <button class="btn btn-red btn-lg" id="bhp-start-vote-btn" onclick="startBedriegersVote()">Start stemmen 🗳️</button>
@@ -1723,7 +1723,6 @@ function startBedriegerGame() {
     const themaGever = nonBedriegers[Math.floor(Math.random() * nonBedriegers.length)].name;
     state.themaGever = themaGever;
     document.getElementById('bhp-waiting-theme').style.display = 'block';
-    document.getElementById('bhp-waiting-naam').textContent = themaGever;
     document.getElementById('bhp-start-vote-btn').style.display = 'none';
     roomRoot().update({ phase: 'bedrieger-waiting-theme', bedrieger: state.bedrieger, themaGever, gameMode: 'bedrieger', votes: null });
   }
